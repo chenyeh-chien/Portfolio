@@ -1,0 +1,50 @@
+// app/blog/[slug]/page.tsx
+import { MDXRemote } from "next-mdx-remote/rsc"
+import { getAllPostSlugs, getPostSource } from "@/lib/posts"
+import remarkGfm from "remark-gfm";
+import rehypeShiki from "@shikijs/rehype";
+
+export const dynamic = "force-static" // SSG
+export const revalidate = false
+
+// 讓 Next 在 build 時產出 SSG 靜態路徑
+export function generateStaticParams() {
+  const slugs = getAllPostSlugs()
+  return slugs.map((slug) => ({ slug }))
+}
+
+// 文章內可用的客製元件（需要時再加）
+const mdxComponents = {
+  // Example: code snippet wrapper, custom alert, etc.
+}
+
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const { slug } = await params
+  const { content, meta } = getPostSource(slug)
+
+  return (
+    <main className="w-screen h-screen mx-auto max-w-3xl px-4 py-12">
+      <article className="prose-blog">
+        <h1 className="mb-2">{meta.title}</h1>
+        <p className="mt-0 text-sm text-neutral-500">
+          {new Date(meta.date).toLocaleDateString()}
+        </p>
+
+        <MDXRemote 
+          source={content} 
+          components={mdxComponents} 
+          options={{
+            mdxOptions: {
+              remarkPlugins: [remarkGfm],
+              rehypePlugins: [
+                [rehypeShiki, { theme: "github-dark" }] // 可以換 theme ex: "vitesse-dark"
+              ],
+            },
+          }}
+        />
+      </article>
+    </main>
+  )
+}
+
+// bg-[#242222]

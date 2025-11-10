@@ -1,0 +1,117 @@
+---
+title: "Object Detection with Expo"
+date: "2025-11-07"
+description: "Problems encountered when developing AR mobile app with object detection."
+tags: ["expo", "react-native", "yolo", "object-detection"]
+cover: "/og/hello-mdx.png"
+---
+
+**Inference流程:**  
+1. Load 訓練好的Model:
+```tsx
+import { useTensorflowModel } from "react-native-fast-tflite";
+
+const { model, state } = useTensorflowModel(
+  // model 存放位置
+  require("../../../assets/models/best_int8.tflite") 
+);
+```
+
+2. Load 需要測試的照片:  
+```tsx
+import { Asset } from "expo-asset";
+
+const asset = Asset.fromModule(require("../../../assets/images/test_sample.png"));
+await asset.downloadAsync();
+const uri = asset.localUri ?? asset.uri;
+```
+
+3. 將照片轉成base64:  
+```tsx
+import * as ImageManipulator from "expo-image-manipulator";
+
+const manip = await ImageManipulator.manipulateAsync(uri, [], { base64: true });
+```
+
+4. 照片向素轉換:  
+```tsx
+const origW = manip.width;
+const origH = manip.height;
+const raw = atob(manip.base64!);
+const rgbaArr = new Uint8Array(raw.length);
+for (let i = 0; i < raw.length; i++) rgbaArr[i] = raw.charCodeAt(i);
+
+// RGBA to RGB
+const rgbArr = new Float32Array(origW * origH * 3);
+for (let i = 0, j = 0; i < rgbaArr.length; i += 4, j += 3) {
+  rgbArr[j] = rgbaArr[i] / 255.0;
+  rgbArr[j + 1] = rgbaArr[i + 1] / 255.0;
+  rgbArr[j + 2] = rgbaArr[i + 2] / 255.0;
+}
+```
+
+5. Resize 成預期的寬高(並取範圍內的像素值)
+```tsx
+function preprocessImage(
+  rgbArr: Float32Array,
+  origW: number,
+  origH: number,
+  size = INPUT_SIZE
+) {
+  const scale = size / Math.max(origW, origH);
+  const newW = Math.round(origW * scale);
+  const newH = Math.round(origH * scale);
+
+  const resized = new Float32Array(newW * newH * 3);
+  // 這裡是簡化後的縮放，只取最近像素
+  for (let y = 0; y < newH; y++) {
+    for (let x = 0; x < newW; x++) {
+      const srcY = Math.min(Math.floor(y / scale), origH - 1);
+      const srcX = Math.min(Math.floor(x / scale), origW - 1);
+      const srcIdx = (srcY * origW + srcX) * 3;
+      const dstIdx = (y * newW + x) * 3;
+      resized[dstIdx] = rgbArr[srcIdx];
+      resized[dstIdx + 1] = rgbArr[srcIdx + 1];
+      resized[dstIdx + 2] = rgbArr[srcIdx + 2];
+    }
+  }
+
+  const padLeft = Math.floor((size - newW) / 2);
+  const padTop = Math.floor((size - newH) / 2);
+  const padded = new Float32Array(size * size * 3).fill(1.0); // 白底(255)
+
+  for (let y = 0; y < newH; y++) {
+    for (let x = 0; x < newW; x++) {
+      const dstY = y + padTop;
+      const dstX = x + padLeft;
+      const dstIdx = (dstY * size + dstX) * 3;
+      const srcIdx = (y * newW + x) * 3;
+      padded[dstIdx] = resized[srcIdx];
+      padded[dstIdx + 1] = resized[srcIdx + 1];
+      padded[dstIdx + 2] = resized[srcIdx + 2];
+    }
+  }
+
+  return { img: padded, scale, padLeft, padTop };
+}
+```
+
+6. 根據resize後的image進行inference
+```tsx
+const { img, scale, padLeft, padTop } = preprocessImage(rgbArr, origW, origH);
+const outputs = model.runSync([img]);
+```
+
+7. 將output陣列反轉從[8, 8400]至[8400, 8]
+```tsx
+const outputs = model.runSync([img]);
+const flat = Array.from(outputs[0], Number);
+const anchors = 8400;
+const channels = 8;
+const reshaped = new Array(flat.length);
+for (let i = 0; i < anchors; i++) {
+  for (let c = 0; c < channels; c++) {
+    reshaped[i * channels + c] = flat[c * anchors + i];
+  }
+}
+```
