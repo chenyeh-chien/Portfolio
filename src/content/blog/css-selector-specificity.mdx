@@ -1,0 +1,15 @@
+---
+title: "CSS Selector Specificity"
+date: "2025-12-01"
+description: "CSS Selector Specificity"
+tags: ["css", "css-selector-specificity"]
+cover: "/og/css-selector-specificity.png"
+---
+
+The specificity algorithm is basically a three-column value of three categories or weights - ID, CLASS, and TYPE - corresponding to the three types of selectors. The value represents the count of selector components in each weight category and is written as `ID - CLASS - TYPE`. 
+
+1. **ID**: This is the count of ID selectors (e.g., `#example`).
+2. **CLASS**: This is the count of class selectors (e.g., `.my-class`), attribute selectors (e.g., `[type="radio"]`), and pseudo-classes (e.g., `:hover`).
+3. **TYPE**: This is the count of type selectors (element names, e.g., `h1`, `div`) and pseudo-elements (e.g., `::before`).
+
+It's a better practice to write CSS rules with low specificity so that they can be easily overridden if necessary.

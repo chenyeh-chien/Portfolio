@@ -1,0 +1,27 @@
+---
+title: "CSS Related Knowledge"
+date: "2025-12-01"
+description: "CSS Related Knowledge"
+tags: ["css", "css-related-knowledge"]
+cover: "/og/css-related-knowledge.png"
+---
+
+**box-sizing:**  
+1. By default `box-sizing: content-box`, paddings and borders are not part of the width and height of an element.
+2. `box-sizing: border-box`: The width and height will include the content, padding and border (but not the margin).
+
+**Border and Margin Behavior:**  
+1. **Borders do not collapse** or overlap with those of adjacent elements. Each element’s border is rendered individually.
+2. **Margins can collapse**, but only vertically and only between block-level elements. Horizontal margins do not collapse. This means that if one block element has a bottom margin and the next has a top margin, only the larger of the two will be used. This behavior is independent of box-sizing and is the default in CSS.
+
+**display:**
+- Margins and paddings: 
+1. `inline`: Only horizontal sides respected. Vertical sides, if specified, do not affect layout. Vertical space it takes up depends on line-height, even though the border and padding appear visually around the content.
+
+**position:**  
+1. `absolute`: The element is removed from the flow of the page and positioned at a specified position relative to its closest positioned ancestor if any, or otherwise relative to the initial containing block. Absolutely-positioned boxes can have margins, and they do not collapse with any other margins. These elements do not affect the position of other elements.
+
+
+**Questions:**  
+1. vertical-align
+2. 
