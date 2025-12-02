@@ -21,7 +21,15 @@ cover: "/og/css-related-knowledge.png"
 **position:**  
 1. `absolute`: The element is removed from the flow of the page and positioned at a specified position relative to its closest positioned ancestor if any, or otherwise relative to the initial containing block. Absolutely-positioned boxes can have margins, and they do not collapse with any other margins. These elements do not affect the position of other elements.
 
+**strict equality operator:**  
+1. As a general rule of thumb, never use the == operator, except for convenience when comparing against null or undefined, where a == null will return true if a is null or undefined.
+2. Object.is() vs ===: The only difference between Object.is() and === is how they treat of `signed zeros` and `NaN` values. The === operator (and the == operator) treats the number values -0 and +0 as equal, but treats NaN as not equal to each other.
+
+**events:**  
+1. event delegation: Not all events can be delegated because they are not bubbled. Non-bubbling events include: `focus`, `blur`, `scroll`, `mouseenter`, `mouseleave`, `resize`, etc.
+2. addEventListener(a, b, option): set option to true for event capturing; set option to false for event bubbling; default is false.
 
 **Questions:**  
 1. vertical-align
-2. 
+2. ECMA versions
+3. 

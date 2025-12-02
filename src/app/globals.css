@@ -20,22 +20,21 @@
     @apply prose prose-neutral dark:prose-invert dark:text-white;
 
     h1 {
-      @apply text-4xl font-normal dark:text-white;
+      @apply text-3xl font-bold dark:text-white;
     }
-    h2 {
 
-    }
-    p {
-      
-    }
-    a {
+    h2 {}
 
-    }
+    p {}
+
+    a {}
+
     li {
       @apply dark:text-white
     }
+
     pre {
-      @apply dark:bg-[#151617]! dark:border-solid dark:border-[0.5px] dark:border-gray-700
+      @apply dark:bg-[#151617] dark:border-solid dark:border-[0.5px] dark:border-gray-700
     }
   }
 }
