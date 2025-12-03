@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@layer theme {
+  :root {
+    --page-bg: white;
+  }
+
+  .dark {
+    --page-bg: #252629;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

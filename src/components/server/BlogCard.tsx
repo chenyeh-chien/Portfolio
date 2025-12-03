@@ -1,12 +1,17 @@
 // components/BlogCard.tsx
+import { clsx } from "clsx"
 import Link from "next/link"
 import type { PostMeta } from "@/lib/posts"
 
 export default function BlogCard({ post }: { post: PostMeta }) {
   return (
-    <article className="mx-auto w-full max-w-3xl rounded-2xl border bg-white/60 p-6 shadow-sm backdrop-blur-sm transition hover:shadow-md dark:bg-neutral-900/60">
+    <article
+      className={clsx(
+        "bg-[#1F1D1D] p-4 rounded-lg"
+      )}
+    >
       <header className="mb-4">
-        <h2 className="text-2xl font-semibold tracking-tight">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">
           <Link href={`/blog/${post.slug}`} className="hover:underline">
             {post.title}
           </Link>

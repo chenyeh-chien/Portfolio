@@ -1,0 +1,40 @@
+---
+title: "Web Storage"
+date: "2025-12-01"
+description: "Web Storage"
+tags: ["web-storage"]
+cover: "/og/web-storage.png"
+---
+****
+
+## cookie, localStorage, sessionStorage:
+1. `Cookies`: Suitable for server-client communication, small storage capacity, can be persistent or session-based, domain-specific. Sent to the server on every request.
+2. `localStorage`: Suitable for long-term storage, data persists even after the browser is closed, accessible across all tabs and windows of the same origin, highest storage capacity among the three.
+3. `sessionStorage`: Suitable for temporary data within a single page session, data is cleared when the tab or window is closed, has a higher storage capacity compared to cookies.
+
+## cookie:  
+1. Cookies can have a specific expiration date set using the Expires or Max-Age attributes. If no expiration date is set, the cookie is deleted when the browser is closed (session cookie).
+2. Cookies can be marked as HttpOnly to prevent access from JavaScript, reducing the risk of XSS attacks. They can also be secured with the Secure flag to ensure they are sent only when HTTPS is used.
+
+```javascript
+// Set a cookie for the name/key `auth_token` with an expiry.
+document.cookie =
+  'auth_token=abc123def; expires=Fri, 31 Dec 2024 23:59:59 GMT; path=/';
+
+// Read all cookies. There's no way to read specific cookies using `document.cookie`.
+// You have to parse the string yourself.
+console.log(document.cookie); // auth_token=abc123def
+
+// Delete the cookie with the name/key `auth_token` by setting an
+// expiry date in the past. The value doesn't matter.
+document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+```
+****
+
+**Important links:**  
+1. [Web Storage](hhttps://www.greatfrontend.com/interviews/study/three-months/questions/quiz/describe-the-difference-between-a-cookie-sessionstorage-and-localstorage)
+
+**Related topics:**  
+1. IndexedDB
+2. JWT (JSON Web Token)
+3. 

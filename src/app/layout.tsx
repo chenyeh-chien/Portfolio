@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import Navbar from "@/components/utils/Navbar/Navbar";
 
 export default function RootLayout({
   children,
@@ -10,7 +11,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark">
-          {children}
+          <div className="w-screen min-h-screen bg-(--page-bg)">
+            <Navbar />
+            {children}
+          </div>
         </ThemeProvider>
       </body>
     </html>
