@@ -23,16 +23,15 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   const { content, meta } = getPostSource(slug)
 
   return (
-    <main className="w-screen h-screen mx-auto max-w-3xl px-4 py-12">
+    <main className="mx-auto max-w-3xl px-4 py-12">
       <article className="prose-blog">
         <h1 className="mb-2">{meta.title}</h1>
         <p className="mt-0 text-sm text-neutral-500">
           {new Date(meta.date).toLocaleDateString()}
         </p>
-
-        <MDXRemote 
-          source={content} 
-          components={mdxComponents} 
+        <MDXRemote
+          source={content}
+          components={mdxComponents}
           options={{
             mdxOptions: {
               remarkPlugins: [remarkGfm],

@@ -8,8 +8,7 @@ export default function BlogCard({ post }: { post: PostMeta }) {
     <article
       className={clsx(
         "bg-[#1F1D1D] p-4 rounded-lg"
-      )}
-    >
+      )}>
       <header className="mb-4">
         <h2 className="text-2xl font-semibold tracking-tight text-white">
           <Link href={`/blog/${post.slug}`} className="hover:underline">

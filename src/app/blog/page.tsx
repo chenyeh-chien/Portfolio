@@ -9,16 +9,12 @@ export default function BlogIndexPage() {
   const posts = getAllPosts()
 
   return (
-    <main className="p-4">
-      {posts.length === 0 ? (
-        <p className="text-neutral-500">No posts yet.</p>
-      ) : (
-        <div className="space-y-6">
-          {posts.map((p) => (
-            <BlogCard key={p.slug} post={p} />
-          ))}
-        </div>
-      )}
+    <main className="p-4 flex flex-col gap-4">
+      {posts.map((p) => (
+        <BlogCard
+          key={p.slug}
+          post={p} />
+      ))}
     </main>
   )
 }

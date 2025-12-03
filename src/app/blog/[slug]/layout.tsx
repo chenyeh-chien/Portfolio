@@ -6,9 +6,9 @@ export default function PostLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div 
+    <div
       className={clsx(
-        "min-h-screen w-full h-full bg-[#151617] overflow-auto"
+        "w-full h-full min-h-screen"
       )}>
       {children}
     </div>

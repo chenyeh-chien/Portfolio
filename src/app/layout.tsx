@@ -11,7 +11,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark">
-          <div className="w-screen min-h-screen bg-(--page-bg)">
+          <div className="w-full min-h-screen bg-(--page-bg)">
             <Navbar />
             {children}
           </div>
