@@ -9,12 +9,15 @@ export default function BlogIndexPage() {
   const posts = getAllPosts()
 
   return (
-    <main className="p-4 flex flex-col gap-4">
-      {posts.map((p) => (
-        <BlogCard
-          key={p.slug}
-          post={p} />
-      ))}
-    </main>
+    <div
+      className="flex justify-center p-4">
+      <div className="flex flex-col gap-4">
+        {posts.map((p) => (
+          <BlogCard
+            key={p.slug}
+            post={p} />
+        ))}
+      </div>
+    </div>
   )
 }

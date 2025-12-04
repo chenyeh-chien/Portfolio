@@ -3,11 +3,35 @@
 
 @layer theme {
   :root {
-    --page-bg: white;
+    --background-color: white;
+    --primary-color: #FAF8F7;
+    --accent-color: #FFB320;
+
+    --font-family: "Open Sans", sans-serif;
+    --text-color: #292929;
+    --page-bg: var(--background-color);
+
+    --navbar-bg: var(--primary-color);
+    --navbar-color: var(--text-color);
+
+    --button-bg: var(--accent-color);
+    --button-color: white;
   }
 
   .dark {
-    --page-bg: #252629;
+    --primary-color: #F6EFE6;
+    --background-color: #252629;
+    --accent-color: #F6EFE6;
+
+    --font-family: "Open Sans", sans-serif;
+    --text-color: white;
+    --page-bg: var(--background-color);
+
+    --navbar-bg: var(--primary-color);
+    --navbar-color: var(--text-color);
+
+    --button-bg: var(--accent-color);
+    --button-color: white;
   }
 }
 
@@ -38,5 +62,6 @@
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family);
+  @apply text-sm;
 }
