@@ -6,30 +6,69 @@ tags: ["css", "css-related-knowledge"]
 cover: "/og/css-related-knowledge.png"
 ---
 
+****
+
 **box-sizing:**  
 1. By default `box-sizing: content-box`, paddings and borders are not part of the width and height of an element.
 2. `box-sizing: border-box`: The width and height will include the content, padding and border (but not the margin).
+
+****
 
 **Border and Margin Behavior:**  
 1. **Borders do not collapse** or overlap with those of adjacent elements. Each element’s border is rendered individually.
 2. **Margins can collapse**, but only vertically and only between block-level elements. Horizontal margins do not collapse. This means that if one block element has a bottom margin and the next has a top margin, only the larger of the two will be used. This behavior is independent of box-sizing and is the default in CSS.
 
+****
+
 **display:**
 - Margins and paddings: 
 1. `inline`: Only horizontal sides respected. Vertical sides, if specified, do not affect layout. Vertical space it takes up depends on line-height, even though the border and padding appear visually around the content.
 
+****
+
 **position:**  
 1. `absolute`: The element is removed from the flow of the page and positioned at a specified position relative to its closest positioned ancestor if any, or otherwise relative to the initial containing block. Absolutely-positioned boxes can have margins, and they do not collapse with any other margins. These elements do not affect the position of other elements.
 
+****
 **strict equality operator:**  
 1. As a general rule of thumb, never use the == operator, except for convenience when comparing against null or undefined, where a == null will return true if a is null or undefined.
 2. Object.is() vs ===: The only difference between Object.is() and === is how they treat of `signed zeros` and `NaN` values. The === operator (and the == operator) treats the number values -0 and +0 as equal, but treats NaN as not equal to each other.
+
+****
 
 **events:**  
 1. event delegation: Not all events can be delegated because they are not bubbled. Non-bubbling events include: `focus`, `blur`, `scroll`, `mouseenter`, `mouseleave`, `resize`, etc.
 2. addEventListener(a, b, option): set option to true for event capturing; set option to false for event bubbling; default is false.
 
+****
+
+`<script>`:  
+
+|  Feature   | `<script>`  | `<script async>` | `<script defer>` |
+|  ----  | ----  | ----  | ----  |
+| Parsing behavior | Blocks HTML parsing | Runs parallel to parsing | Runs parallel to parsing |
+| Execution order | In order of appearance | Not guaranteed | In order of appearance |
+| DOM dependency | No | No | Yes (waits for DOM) |
+
+`<script defer>`:  
+1. Similar to `<script async>`, `<script defer>` also downloads the script in parallel to HTML parsing but the script is only executed when the document has been fully parsed and before firing DOMContentLoaded.
+
+****
+
+**arrow function:**  
+1. Arrow functions cannot be used as constructors and will throw an error when used with the new keyword.
+```javascript
+const Foo = () => {};
+const foo = new Foo(); // TypeError: Foo is not a constructor
+```
+****
+
+
 **Questions:**  
 1. vertical-align
 2. ECMA versions
 3. indexedDB
+4. DOM / CSSOM
+5. reflow / repaint / composition
+6. Functional programming
+7. 

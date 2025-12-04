@@ -1,0 +1,90 @@
+---
+title: "Closure"
+date: "2025-12-01"
+description: "Closure"
+tags: ["closure"]
+cover: "/og/closure.png"
+---
+
+****
+
+> Closure is when a function is able to remember and access its lexical scope even when that function is executing outside its lexical scope
+
+```javascript
+function outerFunction() {
+  const outerVar = 'I am outside of innerFunction';
+
+  function innerFunction() {
+    console.log(outerVar); // `innerFunction` can still access `outerVar`.
+  }
+
+  return innerFunction;
+}
+
+const inner = outerFunction(); // `inner` now holds a reference to `innerFunction`.
+
+inner(); // "I am outside of innerFunction"
+// Even though `outerFunction` has completed execution, `inner` still has access to variables defined inside `outerFunction`.
+```  
+- Closures are used extensively in JavaScript, such as in callbacks, event handlers, and asynchronous functions.
+
+```javascript
+const createCounter = () => {
+  let count = 0;
+  return () => {
+    count += 1;
+    return count;
+  };
+};
+
+const counter = createCounter();
+console.log(counter()); // Outputs: 1
+console.log(counter()); // Outputs: 2
+```
+```jsx
+import React, { useState } from 'react';
+
+function Counter() {
+  // Define a state variable using the useState hook
+  const [count, setCount] = useState(0);
+
+  // This handleClick function is a closure
+  function handleClick() {
+    // It can access the 'count' state variable
+    setCount(count + 1);
+  }
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={handleClick}>Increment</button>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div>
+      <h1>Counter App</h1>
+      <Counter />
+    </div>
+  );
+}
+
+export default App;
+```
+
+****
+
+## Why use closures?
+Using closures provide the following benefits:
+
+1. **Data encapsulation**: Closures provide a way to create private variables and functions that can't be accessed from outside the closure. This is useful for hiding implementation details and maintaining state in an encapsulated way.
+2. **Functional programming**: Closures are fundamental in functional programming paradigms, where they are used to create functions that can be passed around and invoked later, retaining access to the scope in which they were created, e.g. partial applications or currying.
+3. **Event handlers and callbacks**: In JavaScript, closures are often used in event handlers and callbacks to maintain state or access variables that were in scope when the handler or callback was defined.
+4. **Module patterns**: Closures enable the module pattern in JavaScript, allowing the creation of modules with private and public parts.
+
+****
+**important links**:  
+1. [What is a closure and how/why would you use one?](https://www.greatfrontend.com/interviews/study/three-months/questions/quiz/what-is-a-closure-and-how-why-would-you-use-one)
+2. 
