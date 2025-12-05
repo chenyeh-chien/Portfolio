@@ -11,7 +11,7 @@
     --text-color: #292929;
     --page-bg: var(--background-color);
 
-    --navbar-bg: var(--primary-color);
+    --navbar-bg: var(--background-color);
     --navbar-color: var(--text-color);
 
     --button-bg: var(--accent-color);
@@ -19,15 +19,15 @@
   }
 
   .dark {
-    --primary-color: #F6EFE6;
     --background-color: #252629;
+    --primary-color: #F6EFE6;
     --accent-color: #F6EFE6;
 
     --font-family: "Open Sans", sans-serif;
     --text-color: white;
     --page-bg: var(--background-color);
 
-    --navbar-bg: var(--primary-color);
+    --navbar-bg: var(--background-color);
     --navbar-color: var(--text-color);
 
     --button-bg: var(--accent-color);
