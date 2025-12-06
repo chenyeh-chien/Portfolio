@@ -1,31 +1,34 @@
+"use client"
+
 import { useEffect, useState } from "react";
 
-export function useOverflowHidden(element: HTMLElement): 
-  [boolean, (offset: boolean) => void] {
+export function useOverflowHidden(element?: HTMLElement | null) {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
+    const target = element || document.body;
+
     if (hidden) {
-      element.classList.add("overflow-hidden");
+      target.classList.add("overflow-hidden");
     } else {
-      element.classList.remove("overflow-hidden");
+      target.classList.remove("overflow-hidden");
     }
-  
+
     function handleWindowResize(event: UIEvent) {
       event.preventDefault();
-    
+
       if (hidden) {
         setHidden(false);
       }
     }
-  
+
     window.addEventListener('resize', handleWindowResize);
-  
+
     return () => {
-      element.classList.remove("overflow-hidden");
+      target.classList.remove("overflow-hidden");
       window.removeEventListener('resize', handleWindowResize);
     }
-  }, [element, hidden, setHidden]);
+  }, [element, hidden]);
 
-  return [hidden, setHidden]
+  return [hidden, setHidden] as const;
 }

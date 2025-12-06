@@ -1,6 +1,6 @@
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import Navbar from "@/components/utils/Navbar/Navbar";
+import Navbar from "@/components/client/Navbar/Navbar";
 
 export default function RootLayout({
   children,

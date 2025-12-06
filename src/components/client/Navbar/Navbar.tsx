@@ -4,13 +4,13 @@ import { clsx } from "clsx";
 import Link from 'next/link';
 import { FaBars } from "react-icons/fa6";
 import { RxCross1 } from "react-icons/rx";
-import { useOverflowHidden } from "../hooks";
-import BaseButton from "../buttons/BaseButton";
+import { useOverflowHidden } from "../utils/hooks";
+import BaseButton from "../../utils/buttons/BaseButton";
 import SidebarContent from "./SidebarContent";
 
 
 export default function Navbar() {
-  const [showSidebar, setShowSidebar] = useOverflowHidden(document.body);
+  const [showSidebar, setShowSidebar] = useOverflowHidden();
   const links = [
     { href: "/", label: "Home" },
     { href: "/about", label: "About" },
