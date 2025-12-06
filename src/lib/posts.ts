@@ -6,6 +6,7 @@ export type PostMeta = {
   title: string
   date: string
   description?: string
+  category?: string
   tags?: string[]
   cover?: string
   slug: string
@@ -31,6 +32,7 @@ export function getPostSource(slug: string): { content: string; meta: PostMeta }
     title: data.title ?? slug,
     date: data.date ?? new Date().toISOString(),
     description: data.description ?? "",
+    category: data.category ?? "Others",
     tags: data.tags ?? [],
     cover: data.cover ?? "",
     slug,
@@ -44,3 +46,11 @@ export function getAllPosts(): PostMeta[] {
     .map((slug) => getPostSource(slug).meta)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 }
+
+export function getPostsByCategory(category: string): PostMeta[] {
+  return getAllPostSlugs()
+    .map((slug) => getPostSource(slug).meta)
+    .filter((post) => post.category === category)
+    .sort((a, b) => a.title < b.title ? -1 : 1)
+}
+

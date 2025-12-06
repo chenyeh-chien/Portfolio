@@ -1,19 +1,27 @@
+"use client"
+
 import { clsx } from "clsx";
-import type { NavLink } from "@/types/common";
+import { ReactNode } from "react";
 import Link from "next/link";
+import type { NavLink } from "@/types/common";
+
 
 interface Props {
   links: NavLink[];
   showSidebar: boolean;
   setShowSidebar: (value: boolean) => void;
+  pathname: string;
+  blogMenu: ReactNode;
 }
 
 export default function SidebarContent({
   links,
   showSidebar,
-  setShowSidebar
+  setShowSidebar,
+  pathname,
+  blogMenu
 }: Props) {
-  // set content by url
+  const showBlogMenu = pathname === "/blog" || pathname.startsWith("/blog/");
 
   return (
     <aside
@@ -33,7 +41,10 @@ export default function SidebarContent({
           {links.map(link => {
             return (
               <li
-                className="px-3 py-2"
+                className={clsx(
+                  "px-3 py-2",
+                  link.href === pathname && "font-bold"
+                )}
                 key={link.href}
                 onClick={() => setShowSidebar(false)}>
                 <Link href={link.href}>
@@ -44,6 +55,7 @@ export default function SidebarContent({
           })}
         </ul>
       </nav>
+      {showBlogMenu && blogMenu}
     </aside>
   )
 }

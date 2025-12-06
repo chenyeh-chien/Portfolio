@@ -1,16 +1,22 @@
 "use client"
 
 import { clsx } from "clsx";
+import { useEffect, ReactNode } from "react";
 import Link from 'next/link';
+import { usePathname } from "next/navigation";
 import { FaBars } from "react-icons/fa6";
 import { RxCross1 } from "react-icons/rx";
 import { useOverflowHidden } from "../utils/hooks";
 import BaseButton from "../../utils/buttons/BaseButton";
 import SidebarContent from "./SidebarContent";
 
+interface Props {
+  blogMenu: ReactNode;
+}
 
-export default function Navbar() {
+export default function Navbar({ blogMenu }: Props) {
   const [showSidebar, setShowSidebar] = useOverflowHidden();
+  const pathname = usePathname();
   const links = [
     { href: "/", label: "Home" },
     { href: "/about", label: "About" },
@@ -62,6 +68,8 @@ export default function Navbar() {
         links={links}
         showSidebar={showSidebar}
         setShowSidebar={setShowSidebar}
+        pathname={pathname}
+        blogMenu={blogMenu}
       />
     </header>
   )

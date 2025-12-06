@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import Navbar from "@/components/client/Navbar/Navbar";
+import BlogMenu from "@/components/server/Blog/BlogMenu";
 
 export default function RootLayout({
   children,
@@ -17,7 +18,8 @@ export default function RootLayout({
       <body>
         <ThemeProvider attribute="class" defaultTheme="light">
           <div className="w-full min-h-screen bg-(--page-bg)">
-            <Navbar />
+            <Navbar
+              blogMenu={<BlogMenu />} />
             <main className="mt-14">
               {children}
             </main>
