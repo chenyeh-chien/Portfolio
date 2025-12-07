@@ -8,7 +8,7 @@ export default function PostLayout({
   return (
     <div
       className={clsx(
-        "w-full h-full min-h-screen"
+        "w-full h-full min-h-screen lg:ml-80"
       )}>
       {children}
     </div>

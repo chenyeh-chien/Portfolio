@@ -1,5 +1,3 @@
-// app/blog/page.tsx
-
 export const dynamic = "force-static" // SSG
 export const revalidate = false
 

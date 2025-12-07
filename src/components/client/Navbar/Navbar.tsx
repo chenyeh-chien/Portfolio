@@ -11,11 +11,13 @@ import BaseButton from "../../utils/buttons/BaseButton";
 import SidebarContent from "./SidebarContent";
 
 interface Props {
+  showSidebar: boolean;
+  handleShowSidebar: () => void;
   blogMenu: ReactNode;
 }
 
-export default function Navbar({ blogMenu }: Props) {
-  const [showSidebar, setShowSidebar] = useOverflowHidden();
+export default function Navbar({ blogMenu, handleShowSidebar, showSidebar }: Props) {
+
   const pathname = usePathname();
   const links = [
     { href: "/", label: "Home" },
@@ -25,9 +27,7 @@ export default function Navbar({ blogMenu }: Props) {
     { href: "/contact", label: "Contact" },
   ];
 
-  const handleShowSidebar = () => {
-    setShowSidebar(!showSidebar);
-  }
+
 
   return (
     <header
@@ -67,7 +67,7 @@ export default function Navbar({ blogMenu }: Props) {
       <SidebarContent
         links={links}
         showSidebar={showSidebar}
-        setShowSidebar={setShowSidebar}
+        setShowSidebar={handleShowSidebar}
         pathname={pathname}
         blogMenu={blogMenu}
       />
