@@ -1,9 +1,13 @@
 // app/blog/[slug]/page.tsx
+import clsx from "clsx";
+import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm";
 import rehypeShiki from "@shikijs/rehype";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { toURLFriendlySlug } from "@/components/utils/utilFunctions";
 import { getAllPosts, getPostSource } from "@/lib/posts"
+
 
 export const dynamic = "force-static" // SSG
 export const revalidate = false
@@ -16,6 +20,7 @@ export function generateStaticParams() {
     const category = post.category || "Others";
     const categorySlug = toURLFriendlySlug(category);
 
+    console.log([categorySlug, post.slug])
     return {
       slug: [categorySlug, post.slug],
     };
@@ -31,10 +36,17 @@ export default async function BlogPostPage({ params }:
   { params: Promise<{ slug: string[] }> }
 ) {
   const { slug } = await params
-  const { content, meta } = getPostSource(slug[slug.length - 1])
+  const fileName = slug[slug.length - 1]
+  const { content, meta } = getPostSource(fileName);
+
+  const allPosts = getAllPosts();
+  const currentIndex = allPosts.findIndex(post => post.slug === fileName);
+  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
+  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
+
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-12">
+    <main className="mx-auto max-w-3xl px-6 py-12 flex flex-col gap-4 lg:p-16">
       <article className="prose-blog">
         <h1 className="mb-2">{meta.title}</h1>
         <p className="mt-0 text-sm text-neutral-500">
@@ -53,8 +65,42 @@ export default async function BlogPostPage({ params }:
           }}
         />
       </article>
+      <nav className={clsx(
+        "flex flex-col gap-2 lg:flex-row lg:justify-between"
+      )}>
+        {prevPost && (
+          <Link
+            className={clsx(
+              "w-full flex items-center gap-2 px-4 py-6 rounded-lg",
+              "hover:bg-(--primary-color)"
+            )}
+            href={`/blog/${prevPost.category}/${prevPost.slug}`}>
+            <div>
+              <FaChevronLeft />
+            </div>
+            <div className="flex flex-col">
+              <span>Previous</span>
+              <span>{prevPost.title}</span>
+            </div>
+          </Link>
+        )}
+        {nextPost && (
+          <Link
+            className={clsx(
+              "w-full flex items-center gap-2 px-4 py-6 rounded-lg",
+              "justify-end text-end hover:bg-(--primary-color)"
+            )}
+            href={`/blog/${nextPost.category}/${nextPost.slug}`}>
+            <div className="flex flex-col">
+              <span>Next</span>
+              <span>{nextPost.title}</span>
+            </div>
+            <div>
+              <FaChevronRight />
+            </div>
+          </Link>
+        )}
+      </nav>
     </main>
   )
 }
-
-// bg-[#242222]

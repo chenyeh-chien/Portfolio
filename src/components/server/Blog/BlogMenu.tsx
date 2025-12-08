@@ -6,7 +6,8 @@ export const revalidate = false
 
 const CATEGORY_LIST = [
   "Engineering and Ops",
-  "Deep Dive and Research"
+  "Deep Dive and Research",
+  "React"
 ]
 
 export default function BlogMenu() {

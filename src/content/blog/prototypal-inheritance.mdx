@@ -9,6 +9,48 @@ category: "Deep Dive and Research"
 
 ****
 
+```javascript
+// ES5 inheritance
+// Superclass
+function Person1(name) {
+  this.name = name;
+}
+
+// Subclass
+function Student1(name, studentId) {
+  // Call constructor of superclass to initialize superclass-derived members.
+  Person1.call(this, name);
+
+  // Initialize subclass's own members.
+  this.studentId = studentId;
+}
+Student1.prototype = Object.create(Person1.prototype);
+Student1.prototype.constructor = Student1;
+
+const student1 = new Student1('John', 1234);
+console.log(student1.name, student1.studentId); // "John" 1234
+
+// ES2015 inheritance
+// Superclass
+class Person2 {
+  constructor(name) {
+    this.name = name;
+  }
+}
+
+// Subclass
+class Student2 extends Person2 {
+  constructor(name, studentId) {
+    super(name);
+    this.studentId = studentId;
+  }
+}
+
+const student2 = new Student2('Alice', 5678);
+console.log(student2.name, student2.studentId); // "Alice" 5678
+
+```
+
 **important links:**  
 1. [explain-the-difference-between-classical-inheritance-and-prototypal-inheritance](https://www.greatfrontend.com/interviews/study/three-months/questions/quiz/explain-the-difference-between-classical-inheritance-and-prototypal-inheritance)
 2. 

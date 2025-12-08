@@ -1,0 +1,538 @@
+---
+title: "Hooks"
+date: "2025-12-01"
+description: "Hooks"
+tags: ["hooks"]
+cover: "/og/hooks.png"
+category: "React"
+---
+
+****
+
+# Hooks:  
+### useState : 
+```javascript
+const [state, setState] = useState(initialState)
+```
+
+1. Caveats:
+- If you pass a function as initialState, it will be treated as an initializer function. It should be `pure`, should `take no arguments`, and should return a value of any type. React will call your initializer function when initializing the component, and store its return value as the initial state.
+- In Strict Mode, React will `call your initializer function twice` in order to help you find accidental impurities. This is development-only behavior and does not affect production. If your initializer function is pure (as it should be), this should not affect the behavior. The result from one of the calls will be ignored.
+- The set function only updates the state variable for the next render. If you read the state variable after calling the set function, you will still get the `old value` that was on the screen before your call.
+- If the new value you provide is identical to the current state, as determined by an `Object.is` comparison, React will `skip re-rendering` the component and its children. This is an optimization. Although in some cases React may still need to call your component before skipping the children, it shouldn’t affect your code.
+
+2. Updating state based on the previous state:
+```javascript
+function handleClick() {
+  setAge(a => a + 1); // setAge(42 => 43)
+  setAge(a => a + 1); // setAge(43 => 44)
+  setAge(a => a + 1); // setAge(44 => 45)
+}
+```
+
+- React puts your updater functions in a queue. Then, during the next render, it will call them in the same order
+3. Avoiding recreating the initial state:
+- Although the result of createInitialTodos() is only used for the initial render, you’re still calling this function on every render. This can be wasteful if it’s creating large arrays or performing expensive calculations.
+To solve this, you may pass it as an initializer function to useState instead:
+```javascript
+function TodoList() {
+  const [todos, setTodos] = useState(createInitialTodos);
+  // ...
+```
+If you pass a function to useState, React will only call it during initialization.
+
+4. `I’ve updated the state, but the screen doesn’t update`:
+- You mutated an existing obj object and passed it back to setObj, so React ignored the update. To fix this, you need to ensure that you’re always replacing objects and arrays in state instead of mutating them:
+```javascript
+// ✅ Correct: creating a new object
+setObj({
+  ...obj,
+  x: 10
+});
+```
+5. `I’m trying to set state to a function, but it gets called instead`:
+```javascript
+const [fn, setFn] = useState(() => someFunction);
+
+function handleClick() {
+  setFn(() => someOtherFunction);
+}
+```
+
+****
+### useEffect :
+
+```javascript
+useEffect(setup, dependencies?)
+```
+```javascript
+import { useState, useEffect } from 'react';
+import { createConnection } from './chat.js';
+
+function ChatRoom({ roomId }) {
+  const [serverUrl, setServerUrl] = useState('https://localhost:1234');
+
+  useEffect(() => {
+    const connection = createConnection(serverUrl, roomId);
+    connection.connect();
+    return () => {
+      connection.disconnect();
+    };
+  }, [serverUrl, roomId]);
+  // ...
+}
+```
+1. Caveats:
+- When your component is added to the DOM, React will run your setup function. After every re-render with changed dependencies, React will first run the cleanup function (if you provided it) with the old values, and then run your setup function with the new values. After your component is removed from the DOM, React will run your cleanup function. 
+- `dependencies`: The list of all reactive values referenced inside of the setup code. Reactive values include props, state, and all the variables and functions declared directly inside your component body.  React will compare each dependency with its previous value using the Object.is comparison. `If you omit this argument, your Effect will re-run after every re-render of the component`.
+- useEffect is a Hook, so you can only call it at the `top level` of your component or your own Hooks. You can’t call it inside loops or conditions. If you need that, extract a new component and move the state into it.
+- Effects only run on the client. They don’t run during server rendering.
+- React calls your setup and cleanup functions whenever it’s necessary, which may happen multiple times:
+![https://ithelp.ithome.com.tw/upload/images/20250205/20171694oFnQnPqEtL.png](https://ithelp.ithome.com.tw/upload/images/20250205/20171694oFnQnPqEtL.png)
+- An Effect with empty dependencies doesn’t re-run when any of your component’s props or state change.
+- ![https://ithelp.ithome.com.tw/upload/images/20250205/20171694C0FLMs0FYI.png](https://ithelp.ithome.com.tw/upload/images/20250205/20171694C0FLMs0FYI.png)
+
+****
+
+### useMemo :
+```javascript
+const cachedValue = useMemo(calculateValue, dependencies)
+```
+
+1. Caveats:
+- On the initial render, useMemo returns the result of calling calculateValue with no arguments. During next renders, it will either return an already stored value from the last render (if the dependencies haven’t changed), or call calculateValue again, and return the result that calculateValue has returned.
+```jsx
+import { useMemo } from 'react';
+
+function TodoList({ todos, tab, theme }) {
+  const visibleTodos = useMemo(() => filterTodos(todos, tab), [todos, tab]);
+  // ...
+}
+```
+- You should only rely on useMemo as a `performance optimization`.
+- if you’ve verified that a re-render is slow, you can tell List to skip re-rendering when its props are the same as on last render by wrapping it in memo:
+```javascript
+import { memo } from 'react';
+
+const List = memo(function List({ items }) {
+  // ...
+});
+
+// With this change, List will skip re-rendering if all of its props are the same as on the last render. 
+```
+
+```javascript
+export default function TodoList({ todos, tab, theme }) {
+  // Tell React to cache your calculation between re-renders...
+  const visibleTodos = useMemo(
+    () => filterTodos(todos, tab),
+    [todos, tab] // ...so as long as these dependencies don't change...
+  );
+  return (
+    <div className={theme}>
+      {/* ...List will receive the same props and can skip re-rendering */}
+      <List items={visibleTodos} />
+    </div>
+  );
+}
+```
+- However, since useMemo is performance optimization, not a semantic guarantee, React may throw away the cached value if there is a specific reason to do that. This will also cause the effect to re-fire, so it’s even better to remove the need for a function dependency by moving your object inside the Effect:
+```javascript
+function ChatRoom({ roomId }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const options = { // ✅ No need for useMemo or object dependencies!
+      serverUrl: 'https://localhost:1234',
+      roomId: roomId
+    }
+    
+    const connection = createConnection(options);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]); // ✅ Only changes when roomId changes
+  // ...
+```
+
+****
+
+### useCallback :
+```javascript
+const cachedFn = useCallback(fn, dependencies)
+```
+1. Caveats:
+- On the initial render, useCallback returns the fn function you have passed. During subsequent renders, it will either return an already stored fn  function from the last render (if the dependencies haven’t changed), or return the fn function you have passed during this render.
+- In JavaScript, a function () {} or () => {} always creates a different function.
+```javascript
+function ProductPage({ productId, referrer, theme }) {
+  // Tell React to cache your function between re-renders...
+  const handleSubmit = useCallback((orderDetails) => {
+    post('/product/' + productId + '/buy', {
+      referrer,
+      orderDetails,
+    });
+  }, [productId, referrer]); // ...so as long as these dependencies don't change...
+
+  return (
+    <div className={theme}>
+      {/* ...ShippingForm will receive the same props and can skip re-rendering */}
+      <ShippingForm onSubmit={handleSubmit} />
+    </div>
+  );
+}
+```
+
+****
+
+### useContext :
+```javascript
+const value = useContext(SomeContext)
+```
+
+1. Caveats:
+- useContext returns the context value for the calling component. It is determined as the value passed to the `closest SomeContext.Provider` above the calling component in the tree. If there is no such provider, then the returned value will be the defaultValue you have passed to createContext for that context. The returned value is always up-to-date. React automatically re-renders components that read some context if it changes.
+```javascript
+import { useContext } from 'react';
+
+function Button() {
+  const theme = useContext(ThemeContext);
+  // ...
+```
+```javascript
+function MyPage() {
+  return (
+    <ThemeContext.Provider value="dark">
+      <Form />
+    </ThemeContext.Provider>
+  );
+}
+
+function Form() {
+  // ... renders buttons inside ...
+}
+```
+- default value: 
+```javascript
+const ThemeContext = createContext(null);
+```
+
+****
+
+### useReducer :
+```javascript
+const [state, dispatch] = useReducer(reducer, initialArg, init?)
+```
+```javascript
+import { useReducer } from 'react';
+
+function reducer(state, action) {
+  // ...
+}
+
+function MyComponent() {
+  const [state, dispatch] = useReducer(reducer, { age: 42 });
+  // ...
+}
+```
+- optional init: The initializer function that should return the initial state. If it’s not specified, the initial state is set to `initialArg`. Otherwise, the initial state is set to the result of calling `init(initialArg)`.
+- useReducer returns an array with exactly two values:
+1. The current state. During the first render, it’s set to `init(initialArg)` or `initialArg` (if there’s no init).
+2. The dispatch function that lets you update the state to a different value and trigger a re-render.
+- The dispatch function returned by useReducer lets you update the state to a different value and trigger a re-render. You need to pass the action as the only argument to the dispatch function:
+```javascript
+const [state, dispatch] = useReducer(reducer, { age: 42 });
+
+function handleClick() {
+  dispatch({ type: 'incremented_age' });
+  // ...
+}
+```
+- `action`: The action performed by the user. It can be a value of any type. By convention, an action is usually an object with a type property identifying it and, optionally, other properties with additional information.
+- `React batches state updates`. It updates the screen after all the event handlers have run and have called their set functions. This prevents multiple re-renders during a single event.
+-  By convention, it is common to write it as a switch statement.
+```javascript
+function reducer(state, action) {
+  switch (action.type) {
+    case 'incremented_age': {
+      return {
+        name: state.name,
+        age: state.age + 1
+      };
+    }
+    case 'changed_name': {
+      return {
+        name: action.nextName,
+        age: state.age
+      };
+    }
+  }
+  throw Error('Unknown action: ' + action.type);
+}
+```
+- Although the result of createInitialState(username) is only used for the initial render, you’re still calling this function on every render. This can be wasteful if it’s creating large arrays or performing expensive calculations.
+
+To solve this, you may pass it as an initializer function to useReducer as the third argument instead:
+```javascript
+function createInitialState(username) {
+  // ...
+}
+
+function TodoList({ username }) {
+  const [state, dispatch] = useReducer(reducer, username, createInitialState);
+  // ...
+}
+```
+- In the above example, createInitialState takes a username argument. If your initializer doesn’t need any information to compute the initial state, you may pass null as the second argument to useReducer.
+- If you need to guess the next state value, you can calculate it manually by calling the reducer yourself:
+```javascript
+const action = { type: 'incremented_age' };
+dispatch(action);
+
+const nextState = reducer(state, action);
+console.log(state);     // { age: 42 }
+console.log(nextState); // { age: 43 }
+```
+
+****
+
+### useRef :
+```javascript
+const ref = useRef(initialValue)
+```
+
+1. Caveats:
+- When you change the ref.current property, React does not re-render your component. React is not aware of when you change it because a ref is a plain JavaScript object.
+- Changing a ref does not trigger a re-render. This means refs are perfect for storing information that doesn’t affect the visual output of your component. For example, if you need to store an interval ID and retrieve it later, you can put it in a ref.![https://ithelp.ithome.com.tw/upload/images/20250207/2017169467EXAqtgnR.png](https://ithelp.ithome.com.tw/upload/images/20250207/2017169467EXAqtgnR.png)
+- `Do not write or read ref.current during rendering.` (If you have to read or write something during rendering, use state instead.):
+```javascript
+function MyComponent() {
+  // ...
+  // 🚩 Don't write a ref during rendering
+  myRef.current = 123;
+  // ...
+  // 🚩 Don't read a ref during rendering
+  return <h1>{myOtherRef.current}</h1>;
+}
+```
+- Manipulating the DOM with a ref:
+```javascript
+ return <input ref={inputRef} />;
+```
+```javascript
+function handleClick() {
+    inputRef.current.focus();
+}
+```
+- React will set the current property back to null when the node is removed from the screen.
+
+****
+
+### useImperativeHandle :
+```javascript
+useImperativeHandle(ref, createHandle, dependencies?)
+```
+
+1. Caveats:
+- Call useImperativeHandle at the top level of your component to customize the ref handle it exposes:
+```
+import { useImperativeHandle } from 'react';
+
+function MyInput({ ref }) {
+  useImperativeHandle(ref, () => {
+    return {
+      // ... your methods ...
+    };
+  }, []);
+  // ...
+}
+```
+- createHandle: A function that takes no arguments and returns the ref handle you want to expose. That ref handle can have any type. Usually, you will return `an object with the methods` you want to expose.
+
+![https://ithelp.ithome.com.tw/upload/images/20250207/20171694FjxFRX126j.png](https://ithelp.ithome.com.tw/upload/images/20250207/20171694FjxFRX126j.png)
+```javascript
+import { useRef, useImperativeHandle } from 'react';
+
+function MyInput({ ref }) {
+  const inputRef = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      focus() {
+        inputRef.current.focus();
+      },
+      scrollIntoView() {
+        inputRef.current.scrollIntoView();
+      },
+    };
+  }, []);
+
+  return <input ref={inputRef} />;
+}
+```
+![https://ithelp.ithome.com.tw/upload/images/20250207/201716942Nw82860CR.png](https://ithelp.ithome.com.tw/upload/images/20250207/201716942Nw82860CR.png)
+
+****
+
+### useTransition :
+```javascript
+const [isPending, startTransition] = useTransition()
+```
+
+1. Caveats:
+![https://ithelp.ithome.com.tw/upload/images/20250207/20171694ZteLHtJnRf.png](https://ithelp.ithome.com.tw/upload/images/20250207/20171694ZteLHtJnRf.png)
+![https://ithelp.ithome.com.tw/upload/images/20250207/201716948SbvmEJcYV.png](https://ithelp.ithome.com.tw/upload/images/20250207/201716948SbvmEJcYV.png)
+- State updates marked as Transitions will be non-blocking and will not display unwanted loading indicators.
+- The function passed to startTransition is called the “Action”. You can update state and (optionally) perform side effects within an Action, and the work will be done in the background without blocking user interactions on the page.
+- If you’re building a React framework or a router, we recommend marking page navigations as Transitions.
+![https://ithelp.ithome.com.tw/upload/images/20250207/20171694SGHFYIt1wY.png](https://ithelp.ithome.com.tw/upload/images/20250207/20171694SGHFYIt1wY.png)
+```javascript
+startTransition(async () => {
+  await someAsyncFunction();
+  // ✅ Using startTransition *after* await
+  startTransition(() => {
+    setPage('/about');
+  });
+});
+```
+
+****
+
+### useDeferredValue :
+`useDeferredValue is a React Hook that lets you defer updating a part of the UI.`
+```javascript
+const deferredValue = useDeferredValue(value)
+```
+
+1. Caveats: 
+```javascript
+import { useState, useDeferredValue } from 'react';
+
+function SearchPage() {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  // ...
+}
+```
+- During the initial render, the deferred value will be the same as the value you provided. During updates, the deferred value will “lag behind” the latest value. In particular, React will first re-render without updating the deferred value, and then try to re-render with the newly received value in the background.
+
+****
+
+### `<Suspense>` :
+```javascript
+<Suspense fallback={<Loading />}>
+  <SomeComponent />
+</Suspense>
+```
+
+- If React needs to hide the already visible content because it suspended again, it will clean up layout Effects in the content tree. When the content is ready to be shown again, React will fire the layout Effects again. This ensures that Effects measuring the DOM layout don’t try to do this while the content is hidden.
+
+![https://ithelp.ithome.com.tw/upload/images/20250209/20171694rlPp6DxlUi.png](https://ithelp.ithome.com.tw/upload/images/20250209/20171694rlPp6DxlUi.png)
+
+****
+
+### `<Fragment> (<>...</>)` :
+```javascript
+<>
+  <OneChild />
+  <AnotherChild />
+</>
+```
+
+1. Caveats:
+- optional key: Fragments declared with the explicit `<Fragment>` syntax may have keys.
+- Grouping elements with text:
+```javascript
+function DateRangePicker({ start, end }) {
+  return (
+    <>
+      From
+      <DatePicker date={start} />
+      to
+      <DatePicker date={end} />
+    </>
+  );
+}
+```
+
+****
+
+### `<StrictMode>` :
+`<StrictMode> lets you find common bugs in your components early during development.`
+```javascript
+<StrictMode>
+  <App />
+</StrictMode>
+```
+![https://ithelp.ithome.com.tw/upload/images/20250209/20171694UBXyy3JtEr.png](https://ithelp.ithome.com.tw/upload/images/20250209/20171694UBXyy3JtEr.png)
+
+****
+
+### `<Profiler>` :
+`<Profiler> lets you measure rendering performance of a React tree programmatically.`
+```javascript
+<Profiler id="App" onRender={onRender}>
+  <App />
+</Profiler>
+```
+
+1. Caveats:
+- Profiling adds some additional overhead, so it is disabled in the production build by default. To opt into production profiling, you need to enable a special production build with profiling enabled.
+- Although `<Profiler>` is a lightweight component, it should be used only when necessary. Each use adds some CPU and memory overhead to an application.
+
+****
+
+### useActionState :
+`useActionState is a Hook that allows you to update state based on the result of a form action.`
+```javascript
+const [state, formAction, isPending] = useActionState(fn, initialState, permalink?);
+```
+
+****
+
+### useDebugValue :
+`useDebugValue is a React Hook that lets you add a label to a custom Hook in React DevTools.`
+```javascript
+useDebugValue(value, format?)
+```
+
+****
+
+### useId :
+`useId is a React Hook for generating unique IDs that can be passed to accessibility attributes.`
+```javascript
+const id = useId()
+```
+
+1. Caveats:
+- useId should not be used to generate keys in a list. Keys should be generated from your data.
+
+****
+
+### useOptimistic :
+`useOptimistic is a React Hook that lets you optimistically update the UI.`
+```javascript
+const [optimisticState, addOptimistic] = useOptimistic(state, updateFn);
+```
+
+1. Caveats:
+- This state is called the “optimistic” state because it is usually used to immediately present the user with the result of performing an action, even though the action actually takes time to complete.
+```javascript
+import { useOptimistic } from 'react';
+
+function AppContainer() {
+  const [optimisticState, addOptimistic] = useOptimistic(
+    state,
+    // updateFn
+    (currentState, optimisticValue) => {
+      // merge and return new state
+      // with optimistic value
+    }
+  );
+}
+```
+
+****
+
+### useSyncExternalStore :
+References: 
+- React: https://react.dev/reference/react/hooks

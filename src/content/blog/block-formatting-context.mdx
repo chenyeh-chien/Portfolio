@@ -1,0 +1,21 @@
+---
+title: "Block Formatting Context"
+date: "2025-12-01"
+description: "Block Formatting Context"
+tags: ["block-formatting-context"]
+cover: "/og/block-formatting-context.png"
+category: "Deep Dive and Research"
+---
+
+****
+
+Knowing how to establish a block formatting context is important, because without doing so, the containing box will not contain floated children. This is similar to collapsing margins, but more insidious as you will find entire boxes collapsing in odd ways.
+
+A BFC is an HTML box that satisfies at least one of the following conditions:
+- The value of float is not none.
+- The value of position is neither static nor relative.
+- The value of display is table-cell, table-caption, inline-block, flex, or inline-flex, grid, or inline-grid.
+- The value of overflow is not visible.
+
+**important links:**  
+1. [describe-block-formatting-context-bfc-and-how-it-works](https://www.greatfrontend.com/interviews/study/three-months/questions/quiz/describe-block-formatting-context-bfc-and-how-it-works)
