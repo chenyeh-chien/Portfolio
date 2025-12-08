@@ -30,20 +30,23 @@ export default function SidebarContent({
         'opacity-0 duration-300 ease-in-out -translate-x-full',
         showSidebar && 'opacity-100 translate-x-0',
         'bg-white w-full overflow-y-auto',
+        'lg:hidden'
       )}
       aria-label="Mobile navigation menu">
       <nav>
         <ul
           className={clsx(
-            "flex gap-2 justify-between",
+            "flex gap-2 justify-between p-2",
             "border-b border-b-[#EBE8E8]"
           )}>
           {links.map(link => {
             return (
               <li
                 className={clsx(
-                  "px-3 py-2",
-                  link.href === pathname && "font-bold"
+                  "flex justify-center items-center",
+                  "w-full px-3 py-2 rounded-full",
+                  link.href !== pathname && "hover:bg-(--primary-color)",
+                  link.href === pathname && "text-white bg-(--accent-color)",
                 )}
                 key={link.href}
                 onClick={() => setShowSidebar(false)}>

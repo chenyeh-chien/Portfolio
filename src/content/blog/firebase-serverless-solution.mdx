@@ -10,3 +10,10 @@ category: "Deep Dive and Research"
 ```cli
 npm install -g firebase-tools
 ```
+
+Note:
+- If you use `typescript` as your firebase function language, you need to execute `build` for updating your remote function.
+
+```cli
+npm run build
+firebase deploy --only functions

@@ -22,11 +22,11 @@ export function useOverflowHidden(element?: HTMLElement | null) {
       }
     }
 
-    window.addEventListener('resize', handleWindowResize);
+    //window.addEventListener('resize', handleWindowResize);
 
     return () => {
       target.classList.remove("overflow-hidden");
-      window.removeEventListener('resize', handleWindowResize);
+      //window.removeEventListener('resize', handleWindowResize);
     }
   }, [element, hidden]);
 

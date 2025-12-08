@@ -2,7 +2,7 @@
 import { MDXRemote } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm";
 import rehypeShiki from "@shikijs/rehype";
-import { toURLFriendlySlug } from "@/components/server/utils/utilFunctions";
+import { toURLFriendlySlug } from "@/components/utils/utilFunctions";
 import { getAllPosts, getPostSource } from "@/lib/posts"
 
 export const dynamic = "force-static" // SSG

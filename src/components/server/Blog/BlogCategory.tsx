@@ -1,5 +1,5 @@
 import { getPostsByCategory } from "@/lib/posts";
-import BlogLink from "./BlogLink";
+import BlogLink from "@/components/client/Navbar/BlogLink";
 
 interface Props {
   category: string;

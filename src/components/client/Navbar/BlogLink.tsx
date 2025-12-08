@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { PostMeta } from "@/lib/posts";
-import { toURLFriendlySlug } from "../utils/utilFunctions";
+import { toURLFriendlySlug } from "@/components/utils/utilFunctions";
 import { useSidebar } from "@/context/SidebarContext";
 
 interface Props {
