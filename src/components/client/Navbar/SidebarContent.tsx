@@ -26,7 +26,7 @@ export default function SidebarContent({
   return (
     <aside
       className={clsx(
-        'fixed left-0 top-14 h-full p-5',
+        'fixed left-0 top-14 h-[calc(100vh-56px)] p-5',
         'opacity-0 duration-300 ease-in-out -translate-x-full',
         showSidebar && 'opacity-100 translate-x-0',
         'bg-white w-full overflow-y-auto',

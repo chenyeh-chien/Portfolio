@@ -1,14 +1,9 @@
 import { clsx } from "clsx"
 import BlogCategory from "./BlogCategory"
+import { CATEGORY_LIST } from "@/lib/posts"
 
 export const dynamic = "force-static" // SSG
 export const revalidate = false
-
-const CATEGORY_LIST = [
-  "Engineering and Ops",
-  "Deep Dive and Research",
-  "React"
-]
 
 export default function BlogMenu() {
   return (

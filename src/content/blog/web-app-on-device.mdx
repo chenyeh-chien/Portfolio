@@ -1,0 +1,25 @@
+---
+title: "Web app on device"
+date: "2025-12-01"
+description: "Web app on device"
+tags: ["web app", "iphone"]
+cover: "/og/this.png"
+category: "Deep Dive and Research"
+---
+
+****
+
+- 在手機上旋轉時可以維持畫面為100%寬度
+```css
+html,
+body {
+  /* 避免內容溢出造成水平滾動 */
+  overflow-x: hidden;
+  /* 確保元素寬度佔滿視口 */
+  width: 100%;
+}
+```
+
+**important links:**  
+1. [Web app on device](https://bobtung.medium.com/%E9%9D%A2%E5%B0%8Diphone-x-web%E8%A8%AD%E8%A8%88%E5%B8%AB%E9%9C%80%E8%A6%81%E7%9F%A5%E9%81%93%E7%9A%84%E5%B9%BE%E5%80%8Bcss%E5%B1%AC%E6%80%A7-b7c03b314c6a)
+2. [env-safe-area-inset-bottom](https://laplusda.com/posts/env-safe-area-inset-bottom-guide/)

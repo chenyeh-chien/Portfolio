@@ -12,6 +12,11 @@ export type PostMeta = {
   slug: string
 }
 
+export const CATEGORY_LIST = [
+  "Engineering and Ops",
+  "Deep Dive and Research",
+  "React"
+]
 const BLOG_DIR = path.join(process.cwd(), "src", "content", "blog")
 
 export function getAllPostSlugs(): string[] {
@@ -47,10 +52,26 @@ export function getAllPosts(): PostMeta[] {
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 }
 
+/* TODO: get post order
+export function getAllPostsByCategoryOrder(): PostMeta[] {
+  const posts = getAllPostSlugs()
+    .map((slug) => getPostSource(slug).meta)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+
+  return CATEGORY_LIST.reduce((acc, category) => {
+    return [
+      ...acc,
+      ...posts.filter(post => post.category === category)
+    ]
+  }, [] as PostMeta[])
+}
+*/
+
 export function getPostsByCategory(category: string): PostMeta[] {
   return getAllPostSlugs()
     .map((slug) => getPostSource(slug).meta)
     .filter((post) => post.category === category)
     .sort((a, b) => a.title < b.title ? -1 : 1)
 }
+
 
