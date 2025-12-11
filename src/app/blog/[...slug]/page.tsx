@@ -6,7 +6,11 @@ import remarkGfm from "remark-gfm";
 import rehypeShiki from "@shikijs/rehype";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { toURLFriendlySlug } from "@/components/utils/utilFunctions";
-import { getAllPosts, getPostSource } from "@/lib/posts"
+import {
+  getAllPosts,
+  getAllPostsByCategoryOrder,
+  getPostSource
+} from "@/lib/posts"
 
 
 export const dynamic = "force-static" // SSG
@@ -39,11 +43,10 @@ export default async function BlogPostPage({ params }:
   const fileName = slug[slug.length - 1]
   const { content, meta } = getPostSource(fileName);
 
-  const allPosts = getAllPosts();
+  const allPosts = getAllPostsByCategoryOrder();
   const currentIndex = allPosts.findIndex(post => post.slug === fileName);
-  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
-  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
-
+  const prevPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
+  const nextPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 flex flex-col gap-4 lg:p-16">

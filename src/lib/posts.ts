@@ -52,26 +52,46 @@ export function getAllPosts(): PostMeta[] {
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 }
 
-/* TODO: get post order
-export function getAllPostsByCategoryOrder(): PostMeta[] {
-  const posts = getAllPostSlugs()
+function getAllPostsByTitleOrder(): PostMeta[] {
+  return getAllPostSlugs()
     .map((slug) => getPostSource(slug).meta)
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .sort((a, b) => a.title < b.title ? -1 : 1)
+}
+
+function getSidebarPostsMap() {
+  const posts = getAllPostsByTitleOrder();
+  const map = CATEGORY_LIST.reduce((acc, category) => {
+    return {
+      ...acc,
+      [category]: []
+    }
+  }, {} as Record<string, PostMeta[]>);
+
+  posts.forEach((post) => {
+    if (!post.category) return;
+
+    map[post.category].push(post);
+  })
+
+  return map;
+}
+
+export function getAllPostsByCategoryOrder(): PostMeta[] {
+  const map = getSidebarPostsMap();
 
   return CATEGORY_LIST.reduce((acc, category) => {
     return [
       ...acc,
-      ...posts.filter(post => post.category === category)
+      ...map[category]
     ]
   }, [] as PostMeta[])
 }
-*/
 
 export function getPostsByCategory(category: string): PostMeta[] {
-  return getAllPostSlugs()
-    .map((slug) => getPostSource(slug).meta)
-    .filter((post) => post.category === category)
-    .sort((a, b) => a.title < b.title ? -1 : 1)
+  const map = getSidebarPostsMap();
+  if (!map[category]) return [];
+  
+  return map[category];
 }
 
 
