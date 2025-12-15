@@ -1,0 +1,122 @@
+---
+title: "Lifecycle in Vue and React"
+date: "2025-12-15"
+description: "The difference of lifecycle in Vue and React"
+tags: ["vue", "react"]
+cover: "/og/lifecycle.png"
+category: "Vue / React Comparison"
+---
+
+****
+
+## Vue lifecycle diagram  
+
+![Vue lifecycle diagram](/assets/images/vue-lifecycle-diagram.png "Vue 生命週期")
+
+## Vue rendering mechanism  
+
+```javascript
+const vnode = {
+  type: 'div',
+  props: {
+    id: 'hello'
+  },
+  children: [
+    /* more vnodes */
+  ]
+}
+```
+Here, vnode is a plain JavaScript object (a "virtual node") representing a `<div>` element. It contains all the information that we need to create the actual element. It also contains more children vnodes, which makes it the root of a virtual DOM tree.
+
+A runtime renderer can walk a virtual DOM tree and construct a real DOM tree from it. This process is called **mount**.
+
+If we have two copies of virtual DOM trees, the renderer can also walk and compare the two trees, figuring out the differences, and apply those changes to the actual DOM. This process is called **patch**, also known as **diffing** or **reconciliation**.
+
+
+****
+At the high level, this is what happens when a Vue component is mounted:
+
+- **Compile**: Vue templates are compiled into render functions: functions that return virtual DOM trees. This step can be done either ahead-of-time via a build step, or on-the-fly by using the runtime compiler.
+
+- **Mount**: The runtime renderer invokes the render functions, walks the returned virtual DOM tree, and creates actual DOM nodes based on it. This step is performed as a reactive effect, so it keeps track of all reactive dependencies that were used.
+
+- **Patch**: When a dependency used during mount changes, the effect re-runs. This time, a new, updated Virtual DOM tree is created. The runtime renderer walks the new tree, compares it with the old one, and applies necessary updates to the actual DOM.
+
+![Vue render pipeline](/assets/images/vue-render-pipeline.png "Vue 渲染機制")
+
+The compiler can statically analyze the template and leave hints in the generated code so that the runtime can take shortcuts whenever possible. At the same time, we still preserve the capability for the user to drop down to the render function layer for more direct control in edge cases. We call this hybrid approach **Compiler-Informed Virtual DOM**.
+
+- **Cache Static**:
+```html
+<div>
+  <div>foo</div> <!-- cached -->
+  <div>bar</div> <!-- cached -->
+  <div>{{ dynamic }}</div>
+</div>
+```
+In addition, when there are enough consecutive static elements, they will be condensed into a single "static vnode" that contains the plain HTML string for all these nodes. These static vnodes are mounted by directly setting innerHTML.
+
+- **Patch Flags**:
+```html
+<!-- class binding only -->
+<div :class="{ active }"></div>
+```
+
+When generating the render function code for these elements, Vue encodes the type of update each of them needs directly in the vnode creation call:
+```javascript
+createElementVNode("div", {
+  class: _normalizeClass({ active: _ctx.active })
+}, null, 2 /* CLASS */)
+```
+The last argument, 2, is a **patch flag**. An element can have multiple patch flags, which will be merged into a single number. The runtime renderer can then check against the flags using bitwise operations to determine whether it needs to do certain work
+
+Vue also encodes the type of children a vnode has. For example, a template that has multiple root nodes is represented as a fragment. In most cases, we know for sure that the order of these root nodes will never change, so this information can also be provided to the runtime as a patch flag:
+```javascript
+export function render() {
+  return (_openBlock(), _createElementBlock(_Fragment, null, [
+    /* children */
+  ], 64 /* STABLE_FRAGMENT */))
+}
+```
+The runtime can thus completely skip child-order reconciliation for the root fragment.
+
+
+- **Tree Flattening**:
+```html
+<div> <!-- root block -->
+  <div>...</div>         <!-- not tracked -->
+  <div :id="id"></div>   <!-- tracked -->
+  <div>                  <!-- not tracked -->
+    <div>{{ bar }}</div> <!-- tracked -->
+  </div>
+</div>
+```
+```txt
+div (block root)
+- div with :id binding
+- div with {{ bar }} binding
+```
+When this component needs to re-render, it only needs to traverse the flattened tree instead of the full tree. This is called **Tree Flattening**, and it greatly reduces the number of nodes that need to be traversed during virtual DOM reconciliation. Any static parts of the template are effectively skipped.
+
+## Render Functions & JSX  
+```javascript
+import { h } from 'vue'
+
+const vnode = h(
+  'div', // type
+  { id: 'foo', class: 'bar' }, // props
+  [
+    /* children */
+  ]
+)
+```
+`h()` is short for **hyperscript** - which means "JavaScript that produces HTML (hypertext markup language)". This name is inherited from conventions shared by many virtual DOM implementations. A more descriptive name could be **createVNode()**, but a shorter name helps when you have to call this function many times in a render function.
+
+
+
+
+
+**Reference**: 
+- [Vue Lifecycle Hooks](https://vuejs.org/guide/essentials/lifecycle.html)
+- [Vue Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html)
+- [Vue Rendering Mechanism](https://vuejs.org/guide/extras/rendering-mechanism.html)

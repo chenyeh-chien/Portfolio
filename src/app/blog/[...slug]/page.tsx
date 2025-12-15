@@ -23,8 +23,6 @@ export function generateStaticParams() {
   return allPosts.map(post => {
     const category = post.category || "Others";
     const categorySlug = toURLFriendlySlug(category);
-
-    console.log([categorySlug, post.slug])
     return {
       slug: [categorySlug, post.slug],
     };
