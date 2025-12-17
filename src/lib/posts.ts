@@ -13,6 +13,7 @@ export type PostMeta = {
 }
 
 export const CATEGORY_LIST = [
+  "Interview",
   "Engineering and Ops",
   "React",
   "Vue / React Comparison",
@@ -30,18 +31,19 @@ export function getAllPostSlugs(): string[] {
 }
 
 export function getPostSource(slug: string): { content: string; meta: PostMeta } {
-  const full = path.join(BLOG_DIR, `${slug}.mdx`)
+  const realSlug = decodeURIComponent(slug)
+  const full = path.join(BLOG_DIR, `${realSlug}.mdx`)
   const raw = fs.readFileSync(full, "utf-8")
   const { content, data } = matter(raw)
 
   const meta: PostMeta = {
-    title: data.title ?? slug,
+    title: data.title ?? realSlug,
     date: data.date ?? new Date().toISOString(),
     description: data.description ?? "",
     category: data.category ?? "Others",
     tags: data.tags ?? [],
     cover: data.cover ?? "",
-    slug,
+    slug: realSlug,
   }
 
   return { content, meta }

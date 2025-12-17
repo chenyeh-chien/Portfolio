@@ -1,0 +1,29 @@
+---
+title: "Restful API"
+date: "2025-12-17"
+description: "Preparing related knowledge for job interview"
+tags: ["Interview", "Restful API"]
+cover: "/og/hello-mdx.png"
+category: "Deep Dive and Research"
+---
+
+****
+
+> The best practice for RESTful API design is that path parameters are used to identify a specific resource or resources, while query parameters are used to sort/filter those resources.
+
+#### Path Parameters
+```txt
+GET /cars
+GET /cars/:id
+POST /cars
+PUT /cars/:id
+DELETE /cars/:id
+```
+
+#### Query Parameters
+```txt
+GET /cars?color=blue
+GET /cars?color=blue&brand=ferrari
+```
+
+[Reference](https://stackoverflow.com/questions/30967822/when-do-i-use-path-parameters-vs-query-parameters-in-a-restful-api)

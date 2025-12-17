@@ -1,0 +1,257 @@
+---
+title: "Vuex vs Pinia"
+date: "2025-12-17"
+description: "Preparing related knowledge for job interview"
+tags: ["Interview", "Vue / React Comparison"]
+cover: "/og/hello-mdx.png"
+category: "Vue / React Comparison"
+---
+
+****
+## Vuex
+
+Vuex uses a **single state tree** - that is, this single object contains all your application level state and serves as the "single source of truth." This also means usually you will have only one store for each application.
+
+```javascript
+import { createApp } from 'vue'
+import { createStore } from 'vuex'
+
+// Create a new store instance.
+const store = createStore({
+  state () {
+    return {
+      count: 0
+    }
+  },
+  mutations: {
+    increment (state) {
+      state.count++
+    }
+  }
+})
+
+const app = createApp({ /* your root component */ })
+
+// Install the store instance as a plugin
+app.use(store)
+```
+
+The only way to actually change state in a Vuex store is by **committing a mutation**. Vuex mutations are very similar to events: each mutation has a string type and a handler. The handler function is where we perform actual state modifications, and it will receive the state as the first argument:
+```javascript
+const store = createStore({
+  state: {
+    count: 1
+  },
+  mutations: {
+    increment (state) {
+      // mutate state
+      state.count++
+    }
+  }
+})
+
+store.commit('increment')
+```
+
+One important rule to remember is that mutation handler functions must be **synchronous**.  
+
+Actions are similar to mutations, the differences being that:
+
+- Instead of mutating the state, actions commit mutations.
+- Actions can contain arbitrary asynchronous operations.
+
+Action handlers receive a context object which exposes the same set of methods/properties on the store instance, so you can call **context.commit** to commit a mutation, or access the state and getters via **context.state** and **context.getters**. 
+
+```javascript
+const store = createStore({
+  state: {
+    count: 0
+  },
+  mutations: {
+    increment (state) {
+      state.count++
+    }
+  },
+  actions: {
+    increment (context) {
+      context.commit('increment')
+    }
+  }
+})
+```
+
+Actions are triggered with the store.dispatch method:
+```javascript
+store.dispatch('increment')
+```
+
+We can perform asynchronous operations inside an action:
+```javascript
+actions: {
+  incrementAsync ({ commit }) {
+    setTimeout(() => {
+      commit('increment')
+    }, 1000)
+  }
+}
+```
+```javascript
+actions: {
+  // ...
+  actionB ({ dispatch, commit }) {
+    return dispatch('actionA').then(() => {
+      commit('someOtherMutation')
+    })
+  }
+}
+
+// assuming `getData()` and `getOtherData()` return Promises
+
+actions: {
+  async actionA ({ commit }) {
+    commit('gotData', await getData())
+  },
+  async actionB ({ dispatch, commit }) {
+    await dispatch('actionA') // wait for `actionA` to finish
+    commit('gotOtherData', await getOtherData())
+  }
+}
+```
+
+Vuex allows us to divide our store into modules.
+```javascript
+const moduleA = {
+  state: () => ({ ... }),
+  mutations: { ... },
+  actions: { ... },
+  getters: { ... }
+}
+
+const moduleB = {
+  state: () => ({ ... }),
+  mutations: { ... },
+  actions: { ... }
+}
+
+const store = createStore({
+  modules: {
+    a: moduleA,
+    b: moduleB
+  }
+})
+
+store.state.a // -> `moduleA`'s state
+store.state.b // -> `moduleB`'s state
+```
+
+****
+
+## Pinia  
+```javascript
+// stores/counter.js
+import { defineStore } from 'pinia'
+
+export const useCounterStore = defineStore('counter', {
+  state: () => {
+    return { count: 0 }
+  },
+  // could also be defined as
+  // state: () => ({ count: 0 })
+  actions: {
+    increment() {
+      this.count++
+    },
+  },
+})
+```
+
+```vue
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+
+const counter = useCounterStore()
+
+counter.count++
+// with autocompletion ✨
+counter.$patch({ count: counter.count + 1 })
+// or using an action instead
+counter.increment()
+</script>
+
+<template>
+  <!-- Access the state directly from the store -->
+  <div>Current Count: {{ counter.count }}</div>
+</template>
+```
+
+You can even use a function (similar to a component setup()) to define a Store for more advanced use cases:
+```javascript
+export const useCounterStore = defineStore('counter', () => {
+  const count = ref(0)
+
+  function increment() {
+    count.value++
+  }
+
+  return { count, increment }
+})
+```
+```javascript
+import { defineStore } from 'pinia'
+
+export const useTodos = defineStore('todos', {
+  state: () => ({
+    /** @type {{ text: string, id: number, isFinished: boolean }[]} */
+    todos: [],
+    /** @type {'all' | 'finished' | 'unfinished'} */
+    filter: 'all',
+    // type will be automatically inferred to number
+    nextId: 0,
+  }),
+  getters: {
+    finishedTodos(state) {
+      // autocompletion! ✨
+      return state.todos.filter((todo) => todo.isFinished)
+    },
+    unfinishedTodos(state) {
+      return state.todos.filter((todo) => !todo.isFinished)
+    },
+    /**
+     * @returns {{ text: string, id: number, isFinished: boolean }[]}
+     */
+    filteredTodos(state) {
+      if (this.filter === 'finished') {
+        // call other getters with autocompletion ✨
+        return this.finishedTodos
+      } else if (this.filter === 'unfinished') {
+        return this.unfinishedTodos
+      }
+      return this.todos
+    },
+  },
+  actions: {
+    // any amount of arguments, return a promise or not
+    addTodo(text) {
+      // you can directly mutate the state
+      this.todos.push({ text, id: this.nextId++, isFinished: false })
+    },
+  },
+})
+```
+
+### Vuex vs Pinia
+Compared to Vuex, Pinia provides a simpler API with less ceremony, offers **Composition-API-style APIs**, 
+and most importantly, has solid type inference support when used with **TypeScript**.
+
+- mutations no longer exist
+- No need to create custom complex wrappers to support TypeScript, 
+everything is typed and the API is designed in a way to leverage TS type inference as much as possible.
+- No more magic strings to inject, import the functions, call them, enjoy autocompletion!
+- No need to dynamically add stores, they are all dynamic by default and you won't even notice.
+- No more nested structuring of modules.
+- No namespaced modules
+
+
+**Reference**:  
+- [Vuex](https://vuex.vuejs.org/)
+- [Pinia](https://pinia.vuejs.org/core-concepts/)

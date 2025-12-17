@@ -1,0 +1,231 @@
+---
+title: "Vue Router vs React Router"
+date: "2025-12-17"
+description: "Preparing related knowledge for job interview"
+tags: ["Interview", "Vue / React Comparison"]
+cover: "/og/hello-mdx.png"
+category: "Vue / React Comparison"
+---
+
+****
+
+## Vue Router
+
+```vue  
+<template>
+  <h1>Hello App!</h1>
+  <p><strong>Current route path:</strong> {{ $route.fullPath }}</p>
+  <nav>
+    <RouterLink to="/">Go to Home</RouterLink>
+    <RouterLink to="/about">Go to About</RouterLink>
+  </nav>
+  <main>
+    <RouterView />
+  </main>
+</template>
+```
+
+```javascript
+import { createMemoryHistory, createRouter } from 'vue-router'
+
+import HomeView from './HomeView.vue'
+import AboutView from './AboutView.vue'
+
+const routes = [
+  { path: '/', component: HomeView },
+  { path: '/about', component: AboutView },
+]
+
+export const router = createRouter({
+  history: createMemoryHistory(),
+  routes,
+})
+```
+
+If you're curious about what this plugin does, some of its responsibilities include:
+
+1. Globally registering the RouterView and RouterLink components.
+2. Adding the global $router and $route properties.
+3. Enabling the useRouter() and useRoute() composables.
+4. Triggering the router to resolve the initial route.
+
+```javascript
+import User from './User.vue'
+
+// these are passed to `createRouter`
+const routes = [
+  // dynamic segments start with a colon
+  { path: '/users/:id', component: User },
+]
+```
+
+Regular params will only match characters in between url fragments, separated by /. If we want to match anything, we can use a custom param regexp by adding the **regexp** inside parentheses right after the param:
+
+```javascript
+const routes = [
+  // will match everything and put it under `route.params.pathMatch`
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound },
+  // will match anything starting with `/user-` and put it under `route.params.afterUser`
+  { path: '/user-:afterUser(.*)', component: UserGeneric },
+]
+```
+
+If you need to match routes with multiple sections like /first/second/third, you should mark a param as repeatable with * (0 or more) and + (1 or more):
+
+```javascript
+const routes = [
+  // /:chapters -> matches /one, /one/two, /one/two/three, etc
+  { path: '/:chapters+' },
+  // /:chapters -> matches /, /one, /one/two, /one/two/three, etc
+  { path: '/:chapters*' },
+]
+```
+
+You can also mark a parameter as optional by using the ? modifier (0 or 1):
+
+```javascript
+const routes = [
+  // will match /users and /users/posva
+  { path: '/users/:userId?' },
+  // will match /users and /users/42
+  { path: '/users/:userId(\\d+)?' },
+]
+```
+
+Using a name has various advantages:
+
+- No hardcoded URLs.
+- Automatic encoding of params.
+- Avoids URL typos.
+- Bypassing path ranking, e.g. to display a lower-ranked route that matches the same path.
+
+```javascript
+const routes = [
+  {
+    path: '/user/:username',
+    name: 'profile', 
+    component: User
+  }
+]
+```
+```vue
+<router-link :to="{ name: 'profile', params: { username: 'erina' } }">
+  User profile
+</router-link>
+```
+
+### Nested Routes
+
+```javascript
+const routes = [
+  {
+    path: '/user/:id',
+    component: User,
+    children: [
+      {
+        // UserProfile will be rendered inside User's <router-view>
+        // when /user/:id/profile is matched
+        path: 'profile',
+        component: UserProfile,
+      },
+      {
+        // UserPosts will be rendered inside User's <router-view>
+        // when /user/:id/posts is matched
+        path: 'posts',
+        component: UserPosts,
+      },
+    ],
+  },
+]
+```
+```javascript
+const routes = [
+  {
+    path: '/admin',
+    children: [
+      { path: '', component: AdminOverview },
+      { path: 'users', component: AdminUserList },
+      { path: 'users/:id', component: AdminUserDetails },
+    ], 
+  },
+]
+```
+
+Similar to **window.history.go(n)**:
+```javascript
+// go forward by one record, the same as router.forward()
+router.go(1)
+
+// go back by one record, the same as router.back()
+router.go(-1)
+
+// go forward by 3 records
+router.go(3)
+
+// fails silently if there aren't that many records
+router.go(-100)
+router.go(100)
+```
+
+You may have noticed that **router.push**, **router.replace** and **router.go** are counterparts of **window.history.pushState**, **window.history.replaceState** and **window.history.go**, and they do imitate the **window.history** APIs.
+
+Redirecting is also done in the routes configuration. To redirect from /home to /:
+```javascript
+const routes = [{ path: '/home', redirect: '/' }]
+```  
+
+We can remove the direct dependency on **$route** in **User.vue** by declaring a prop instead:
+```vue
+<!-- User.vue -->
+<script setup>
+defineProps({
+  id: String
+})
+</script>
+
+<template>
+  <div>
+    User {{ id }}
+  </div>
+</template>
+```
+```javascript
+const routes = [
+  { path: '/user/:id', component: User, props: true }
+]
+```
+This allows you to use the component anywhere, which makes the component easier to reuse and test.
+
+The RouterLink component has two props, **activeClass** and **exactActiveClass**, that can be used to change the names of the classes that are applied:
+```vue
+<RouterLink
+  activeClass="border-indigo-500"
+  exactActiveClass="border-indigo-700"
+  ...
+>
+``` 
+The default class names can also be changed globally by passing the **linkActiveClass** and **linkExactActiveClass** options to **createRouter()**:
+```javascript
+const router = createRouter({
+  linkActiveClass: 'border-indigo-500',
+  linkExactActiveClass: 'border-indigo-700',
+  // ...
+})
+```
+
+### Different History modes
+- HTML5 Mode: The HTML5 mode is created with **createWebHistory()** and is the recommended mode.
+- Hash Mode: The hash history mode is created with **createWebHashHistory()**.
+- Memory mode: The memory history mode doesn't assume a browser environment and therefore doesn't interact with the URL nor automatically triggers the initial navigation. This makes it perfect for Node environment and SSR. It is created with **createMemoryHistory()** and requires you to push the initial navigation after calling app.use(router).
+
+
+
+****
+
+## React Router
+
+****
+
+## Reference
+- [Vue Router](https://router.vuejs.org/guide/)
+- [React Router](https://reactrouter.com/)

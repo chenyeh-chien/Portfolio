@@ -1,0 +1,56 @@
+---
+title: "Performance"
+date: "2025-12-15"
+description: ""
+tags: ["CSSOM", "DOM", "Performance", "Repaint", "Reflow", "Render Tree", "Layout Tree", "Layer Tree"]
+cover: "/og/hello-mdx.png"
+category: "Engineering and Ops"
+---
+
+****
+
+### 瀏覽器渲染過程
+
+1. 解析 HTML 和樣式計算 (parsing and style calculation) 把 HTML 解析成 DOM，把 CSS 解析成 CSSOM，DOM 和 CSSOM 合併成渲染樹 (render tree)。
+2. 佈局 (Layout): 渲染樹 (render Tree)  有 DOM 的結構和每個節點的樣式，但這還不足以呈現頁面，還需要計算個節點在畫面上的大小和位置，這個過程稱之為佈局 (layout)，並且這個過程會產生一個佈局樹 (layout Tree)。
+
+3. 繪製 (paint) 擁有 DOM、樣式和佈局仍然不足以呈現頁面，瀏覽器仍然必須判斷元素的繪製順序。可以把這個過程想像成為繪畫過程的註釋 (paint record)，例如：
+
+- 首先是要畫個背景
+- 然後在 (x,y,w,h) 位置上是文字
+- 然後再畫個矩形
+
+4. 合成 (compositing): 前三個步驟中，瀏覽器已經獲得了渲染頁面所需的資訊，但為了提高整體渲染效率，瀏覽器會再透過合成 (compositing)，將資訊渲染到畫面上。  
+合成 (compositing) 是一種將頁面的各個部分分成圖層 (layers) 的技術，而這個技術會在合成線程 (compositor thread)  這個單獨的線程執行。在這個過程完成之後，還會再產生一個圖層樹 (layer tree)，最終才會渲染到畫面上。
+
+
+### 何時發生回流 (Reflow)？
+影響瀏覽器效能很重要的關鍵因素，因為可能導致整個或部分頁面的佈局更新，可能因為一個節點大小的改變，就會觸發整的頁面的回流。例如：改變  width、height、font-size  等。
+
+當一個元素的長與寬改變，可能會影響到畫面中其他元素的編排，所以每當有一個元素的佈局改變，瀏覽器的 CPU 需要重新計算整個頁面中不同元素的長寬、間距等。在計算的期間，會沒辦法處理起他任務 (例如使用者在點擊按鈕，可能會要等一陣子才有回應，因為瀏覽器無暇處理)。
+
+這也是為什麼，回流對效能的影響，往往比重繪來得大。
+
+### 何時發生重繪 (Repaint)？
+當頁面上的某個元素需要改變顏色或其他不影響布局的屬性時，瀏覽器會對其進行重繪 (repaint)。與回流不同，重繪不會影響頁面布局，但是也會影響頁面的性能。例如：改變  outline、visibility、color、background-color等。
+
+### 減少回流 (Reflow) 和重繪 (Repaint)
+在瀏覽器渲染過程中最後一步驟是合成 (compositing)，在某些情況，我們可以透過一些技巧只需要讓瀏覽器合成 (compositing)，而避免回流 (Reflow) 和重繪 (Repaint)。
+
+#### 以下提供幾個方法:
+
+- 移動調整元素時，使用 **transform**
+- 使用 **opacity** 來改變元素的能見度
+- 如果需要頻繁重繪或回流的節點，可以透過 **will-change**  設定成獨立的圖層，因為獨立的圖層可以避免該節點渲染行為影像到其他節點。
+
+```css
+body > .sidebar {
+  will-change: transform;
+}
+```
+- 避免頻繁用 JavaScript 操作 DOM 節點
+
+
+
+**Reference**:  
+- [Repaint and Reflow](https://www.explainthis.io/zh-hant/swe/repaint-and-reflow)

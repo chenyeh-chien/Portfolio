@@ -1,0 +1,181 @@
+---
+title: "Webpack vs Vite"
+date: "2025-12-17"
+description: "Preparing related knowledge for job interview"
+tags: ["Interview"]
+cover: "/og/hello-mdx.png"
+category: "Vue / React Comparison"
+---
+
+****
+
+### Webpack
+
+At its core, webpack is a static module bundler for modern JavaScript applications. When webpack processes your application, it internally builds a dependency graph from one or more entry points and then combines every module your project needs into one or more bundles, which are static assets to serve your content from.
+
+```javascript
+// webpack.config.js
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const ESLintPlugin = require("eslint-webpack-plugin");
+const CopyPlugin = require("copy-webpack-plugin");
+const { VueLoaderPlugin } = require("vue-loader");
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const webpack = require("webpack");
+
+require('dotenv').config();
+
+module.exports = (env) => {
+    return {
+        entry: './src/main.ts',
+        output: {
+            path: path.resolve(__dirname, 'dist'),
+            filename: "js/webapp.bundle.js",
+            publicPath: '/',
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.vue$/,
+                    use: { loader: 'vue-loader' }
+                },
+                {
+                    test: /\.(?:js|mjs|cjs)$/,
+                    exclude: /node_modules/,
+                    use: [{ loader: "babel-loader" }],
+                },
+                { 
+                    test: /\.([cm]?ts|tsx)$/, 
+                    use: { 
+                        loader: "ts-loader",
+                        options: {
+                            appendTsSuffixTo: [/\.vue$/],
+                            transpileOnly: true,
+                        },
+                    },
+                },
+                {
+                    test: /\.(sa|sc|c)ss$/i,
+                    use: ["style-loader", "css-loader", "postcss-loader", "sass-loader"],
+                },
+                
+                {
+                    test: /\.(png|jpe?g|gif|webp|svg|ico)(\?.*)?$/,
+                    type: 'asset/resource',
+                    generator: {
+                        filename: "imgs/[hash][ext][query]"
+                    }
+                },
+                {
+                    test: /\.txt$/,
+                    type: 'asset/source',
+                }
+            ]
+        },
+        devtool: false,
+        plugins: [
+            new VueLoaderPlugin(),
+            new HtmlWebpackPlugin({ template: path.resolve(__dirname, 'public', 'index.html') }),
+            new ESLintPlugin(),
+            new webpack.SourceMapDevToolPlugin({}),
+            new webpack.DefinePlugin({
+                'process.env.PROTOCOL': JSON.stringify(process.env.PROTOCOL),
+                'process.env.HOST': JSON.stringify(process.env.HOST),
+                'process.env.PORT': JSON.stringify(process.env.PORT),
+                'process.env.SERVER_PORT': JSON.stringify(process.env.SERVER_PORT),
+                __VUE_OPTIONS_API__: 'true',
+                __VUE_PROD_DEVTOOLS__: 'false',
+                __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'
+            }),
+            new CopyPlugin({ 
+                patterns: [
+                    { from: "public/assets", to: "assets" },
+                ] 
+            }),
+            // new BundleAnalyzerPlugin(),
+        ],
+        resolve: {
+            extensions: ['.ts', '.js', '.vue', '.json'],
+            alias: {
+                'vue$': 'vue/dist/vue.runtime.esm-bundler.js',
+                '@': path.resolve(__dirname, 'src'),
+            },
+            fallback: {
+                dgram: false,
+                fs: false,
+                net: false,
+                tls: false,
+                child_process: false,
+                stream: false,
+                crypto: false,
+                os: false,
+                path: false,
+                https: false,
+            }
+        },
+        devServer: {
+            allowedHosts: 'auto',
+            client: {
+                overlay: {
+                    warnings: false,
+                    runtimeErrors: false
+                },
+            },
+            compress: true,
+            hot: true,
+            open: false,
+            port: process.env.PORT,
+            server: {
+                type: 'https',
+                options: {
+                    key: path.resolve(__dirname, 'ssl', 'dev.server.key'),
+                    cert: path.resolve(__dirname, 'ssl', 'dev.server.cert'),
+                }
+            },
+            historyApiFallback: true,
+        }
+    }
+}
+```
+
+
+****
+
+### Vite
+It consists of two major parts:  
+- A dev server that provides rich feature enhancements over native ES modules, for example extremely fast **Hot Module Replacement (HMR)**.
+- A build command that bundles your code with **Rollup**, pre-configured to output highly optimized static assets for production.
+
+
+We are starting to hit a performance bottleneck for JavaScript based tooling: it can often take an unreasonably long wait (sometimes up to minutes!) to spin up a dev server, and even with Hot Module Replacement (HMR), file edits can take a couple of seconds to be reflected in the browser. The slow feedback loop can greatly affect developers' productivity and happiness.
+
+Vite improves the dev server start time by first dividing the modules in an application into two categories: dependencies and source code.
+
+- **Dependencies** are mostly plain JavaScript that do not change often during development. Some large dependencies (e.g. component libraries with hundreds of modules) are also quite expensive to process. Dependencies may also be shipped in various module formats (e.g. ESM or CommonJS).  
+
+Vite pre-bundles dependencies using esbuild. esbuild is written in Go and pre-bundles dependencies **10-100x faster** than JavaScript-based bundlers.
+
+- **Source code** often contains non-plain JavaScript that needs transforming (e.g. JSX, CSS or Vue/Svelte components), and will be edited very often. Also, not all source code needs to be loaded at the same time (e.g. with route-based code-splitting).  
+
+Vite serves source code over **native ESM**. This is essentially letting the browser take over part of the job of a bundler: Vite only needs to transform and serve source code on demand, as the browser requests it. Code behind conditional dynamic imports is only processed if actually used on the current screen.
+
+![Vite](/assets/images/vite.png "Vite")  
+
+#### Slow Updates
+When a file is edited in a bundler-based build setup, it is inefficient to rebuild the whole bundle for an obvious reason: the update speed will degrade linearly with the size of the app.
+
+#### Why Bundle for Production
+Even though native ESM is now widely supported, shipping unbundled ESM in production is still inefficient (even with HTTP/2) due to the additional network round trips caused by nested imports. To get the optimal loading performance in production, it is still better to bundle your code with **tree-shaking**, **lazy-loading** and **common chunk splitting** (for better caching).
+
+
+
+****
+
+### Webpack vs Vite
+
+****
+
+**Reference**:  
+- [Webpack](https://webpack.js.org/)
+- [Vite](https://vite.dev/)
+- [What is Vite?](https://www.explainthis.io/zh-hant/swe/what-is-vite)
