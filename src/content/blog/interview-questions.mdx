@@ -1,0 +1,76 @@
+---
+title: "Interview Q&A"
+date: "2026-01-06"
+description: "Preparing related knowledge for job interview"
+tags: ["Interview", "Q&A"]
+cover: "/og/hello-mdx.png"
+category: "Q & A"
+---
+
+****
+
+### Pegatron 5G SVP related questions
+> Q1: 請問SVP的功能是在做甚麼?  
+
+為5G 團隊開發自動化驗證工具，讓使用者可以透過網頁平台編輯腳本，預約時間自動
+驗證腳本內容並且得到完整的Report 以及圖表分析，藉而了解這次5G 團隊開發的基地
+台版本是否符合規定的spec。
+
+
+> Q2: SVP的主要使用者是誰? 
+
+5G 內部團隊 以及 維護/編輯腳本的同仁
+
+> Q3: SVP除了驗證工具之外還有甚麼功能?
+
+有提供PM利用post的方式將近期跟其他公司合作的計畫詳列出來、Server相關設備管理總表以及控制切換switch的control panel、會議室預約系統、各種平台教學的documentation等等...
+
+> Q4: SVP Report Editor 主要的功能是甚麼?
+
+Report Editor 主要是讓開發人員在上面可以透過調整所需的parsing參數從純文字的log轉換成想要的表格以及圖表
+
+> Q5: 有沒有其他相關優化讓系統更加完善的?
+
+於後端Express中加入worker thread，讓系統可以同時利用多個核心產生圖表，讓使用者可以減少等待時間。
+
+****
+
+### Pegatron 5G ARUMS related questions
+> Q1: 請問ARUMS的功能是在做甚麼?  
+
+平台為協助同仁操控User Equipment (UE)下指令或是編輯腳本透過Schedule 預約測試Throughput、Ping、FTP、HTTP, Register 等。測試結果會透過向InfluxDB 拿取資料匯出呈現Real-time 圖表。
+
+> Q2: ARUMS的主要使用者是誰? 
+
+5G 內部團隊、各廠區同仁、ITRI
+
+> Q3: 可以描述一下關於圖表優化的過程以及想法嗎?
+
+原本使用vue-apexcharts來呈現圖表，但發現當資料載入的時候會導致頁面卡頓，經過研究發現呈現圖表主要有兩種形式: **SVG** 以及 **Canvas**。 
+SVG內部為每條點與線都是獨立的DOM節點，所以當資料量過大時，會導致DOM節點數量過多，造成頁面卡頓。 
+而Canvas為一張圖，不管資料量多少，只有一個DOM節點，所以才改成使用Chart.js來呈現圖表。
+
+> Q4: 為何使用socket.io來拿取資料?
+
+利用**socket.io**可以透過管理token來確認是否要繼續執行目前拿取資料的任務，畢竟當時間拉長所需要從influxDB拿取資料的時間就會越長。
+也可以根據不同圖表平行的向後端拿取資料，讓使用者可以漸進式得到部分圖表，而不是花費大量時間等待所有圖表都載入完成。
+
+> Q5: ARUMS還有其他功能嗎?
+
+於首頁有串接**Prometheus API**並透過**Server Sent Events (SSE)** 即時監控後端各個系統的狀態並主動推播至使用者頁面
+
+****
+
+### 其他問題
+> Q1: 有使用過任何UI Framework嗎?
+
+有使用過**Tailwind CSS**
+
+> Q2: 從需求轉化成網頁的過程是甚麼?
+
+1. 由其他人向課長提出需求
+2. 課長會將需求轉換成GitLab Issue
+3. 我會初步根據Issue內容進行規劃手繪UI以及用**draw.io**畫出流程圖
+4. 若想法與課長一致，我才會開始進行開發
+5. 最後再透過DEV環境進行測試
+6. 一切沒有問題才會進版到PROD
