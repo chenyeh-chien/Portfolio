@@ -1,0 +1,99 @@
+---
+title: "Open source security"
+date: "2025-12-01"
+description: "Open source security"
+tags: ["open-source-security"]
+cover: "/og/open-source-security.png"
+category: "Security"
+---
+
+****  
+
+### OpenSSL: SSL/TLS  
+### NPM: 
+1. npm audit (檢查第三方套件的安全性)  
+
+### Integrity:  
+1. 使用CDN時，需要使用integrity以及crossOrigin來避免攻擊 (通常CDN網站複製的script tag會附上這些資訊)
+2. 只有套件包含版本號時，才能使用 integrity (不然一更新就會不能使用該套件)
+3. Fallback: 如果 CDN 校驗失敗導致腳本沒載入，就從本地端載入一份備份。
+```HTML
+<script src="https://cdn.com/jquery.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
+<script>window.jQuery || document.write('<script src="/js/vendor/jquery.min.js"><\/script>')</script>
+```
+
+
+- 關注所使用的第三方套件資安相關訊息
+- 使用 npm audit 檢查 (node.js)
+- unit test 覆蓋率夠高才能在版本升級後減少原有功能發生問題的風險
+
+### Vite / Webpack handle SRI:
+
+#### 內部資源:  
+這是插件最核心的功能。當你執行 build 時，打包工具會產生混淆後的 main.12345.js。  
+- 運作方式：插件會計算這支檔案的雜湊值，然後在生成的 index.html 中，自動為該 `<script>` 標籤補上 integrity="sha384-..."。
+- 目的：防止你的伺服器（或你自己的 CDN）被駭客替換了打包後的代碼。
+
+#### 外部資源: 
+1. Vite: 
+- 它會掃描你 index.html 裡所有的 `<script>` 標籤。
+- 如果它發現你有 src 指向外部，它會嘗試在構建時下載該檔案，計算雜湊，並幫你補上 integrity 屬性。
+- 優點：自動化程度極高，你只需寫 src，它幫你補全。
+```bash
+npm install vite-plugin-sri -D
+```
+
+```javascript
+import { defineConfig } from 'vite';
+import { sri } from 'vite-plugin-sri';
+
+export default defineConfig({
+  plugins: [
+    // ... 其他插件如 vue() 或 react()
+    sri()
+  ],
+});
+```
+
+2. Webpack: 
+- 它主要針對 Webpack 管理下的資源。
+- 如果你是純手寫在 HTML 裡的標籤，Webpack 插件通常不會去動它。
+- 解決方案：如果你在 Webpack 中使用 HtmlWebpackPlugin 配合 externals 配置（將 npm 套件映射到 CDN），它才會在插入標籤時幫你補上 SRI。
+```bash
+npm install webpack-subresource-integrity -D
+```
+```javascript
+const { SubresourceIntegrityPlugin } = require("webpack-subresource-integrity");
+
+module.exports = {
+  output: {
+    // 必須設定 crossOriginLoading，否則 SRI 不會生效
+    crossOriginLoading: "anonymous",
+  },
+  plugins: [
+    new SubresourceIntegrityPlugin({
+      hashFuncNames: ["sha384", "sha512"], // 產生的雜湊演算法
+      enabled: process.env.NODE_ENV === "production", // 僅在生產環境啟用
+    }),
+  ],
+};
+```
+
+> 手動加入CDN
+1. 開發環境：不加 SRI，方便隨時切換版本。
+2. 正式環境：
+- 使用 srihash.org 產生的標籤。
+- 關鍵提醒：如果 CDN 掛掉或校驗失敗，瀏覽器會直接「報錯且不執行」。在金融或電商專案中，建議配置 Fallback（備援腳本），如下：
+```HTML
+<script src="https://cdn.example.com/library.js" 
+        integrity="sha384-XXXX" 
+        crossorigin="anonymous"></script>
+
+<script>
+  if (!window.LibraryName) {
+    var script = document.createElement('script');
+    script.src = '/js/vendor/library.js'; // 你的本地備份
+    document.head.appendChild(script);
+  }
+</script>
+```

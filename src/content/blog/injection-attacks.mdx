@@ -1,0 +1,56 @@
+---
+title: "Injection attacks"
+date: "2025-12-01"
+description: "Injection attacks"
+tags: ["injection-attacks"]
+cover: "/og/injection-attacks.png"
+category: "Security"
+---
+
+****  
+
+### SQL Injection
+
+1. 使用**參數化查詢（Parameterized Queries / Prepared Statements）**:
+```javascript
+// 安全的做法
+const query = "SELECT * FROM users WHERE username = ?";
+db.execute(query, [userInput]);
+```
+
+2. 使用**預存程序（Stored Procedures）**:  
+這與參數化查詢類似，是將 SQL 邏輯預先儲存在資料庫端。
+
+- 優點：外部傳入的參數同樣會經過自動過濾。
+- 注意：開發者必須確保預存程序內部沒有再次動態拼接字串，否則仍會產生「二次注入」。
+
+3. 輸入**驗證（Input Validation）—— 白名單機制**:  
+不要只檢查「不可以輸入什麼」，而是檢查「應該輸入什麼」。
+
+- 做法：
+    - 類型檢查：預期是數字，就強制轉成 Integer。
+    - 格式檢查：Email 必須符合正規表示式（Regex）。
+    - 長度檢查：密碼或名稱不應超過預定的長度。
+
+4. 遵循**最小權限原則（Principle of Least Privilege）**:  
+這是「最後一道防線」。
+- 做法：網頁應用程式連接資料庫的帳號，不應該擁有 DROP TABLE、TRUNCATE 或存取作業系統（如 xp_cmdshell）的權限。
+- 效果：即便黑客成功注入，他也只能讀取受限的資料，無法摧毀整個資料庫系統。
+
+5. 使用現代 **ORM/ODM** 工具:  
+現代開發框架（如 Sequelize (Node.js)、Entity Framework (.NET)、Hibernate (Java)）預設就會處理參數化查詢。
+- 風險提示：雖然 ORM 很安全，但如果開發者使用了工具提供的「Raw Query（原生查詢）」功能且未經處理，注入漏洞會再次出現。
+
+****  
+
+顯示「該 Email 已經存在」本身並不會直接讓「注入攻擊」變得更容易，但它會導致另一種資安風險：「使用者列舉攻擊」(User Enumeration)。 
+在資安專案中，這被視為一種資訊洩漏（Information Disclosure）。
+
+為了兼顧資安與使用者體驗，現代標準（如 OWASP）建議採用**「統一的錯誤回應」**：
+
+- 在註冊頁面：
+    - 不建議： 「該 Email 已經存在」。 建議： 「如果該 Email 已註冊，您將會收到一封確認信，請至信箱檢查。」
+    - 效果： 無論 Email 是否存在，前端顯示的訊息都一樣，駭客無法判斷該 Email 是否為會員。
+
+- 在登入頁面：
+    - 不建議： 「帳號不存在」或「密碼錯誤」。 建議： 「帳號或密碼錯誤，請再試一次。」

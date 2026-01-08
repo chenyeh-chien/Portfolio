@@ -19,6 +19,7 @@ export const CATEGORY_LIST = [
   "React",
   "Vue / React Comparison",
   "Deep Dive and Research",
+  "Security"
 ]
 const BLOG_DIR = path.join(process.cwd(), "src", "content", "blog")
 
