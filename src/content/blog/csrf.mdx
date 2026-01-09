@@ -1,0 +1,103 @@
+---
+title: "Cross-site Request Forgery (CSRF)"
+date: "2026-01-09"
+description: "Cross-site Request Forgery"
+tags: ["csrf"]
+cover: "/og/csrf.png"
+category: "Security"
+---
+
+****  
+### CSRF 的核心原理
+CSRF 利用了 Web 瀏覽器的一個特性：自動攜帶 Cookie。 當你登入某個網站（如銀行 A）後，瀏覽器會存下你的 Session Cookie。只要你沒登出，之後你對銀行 A 發出的所有請求，瀏覽器都會自動帶上這個 Cookie，證明「你是你」。  
+黑客不需要知道你的密碼或 Cookie 內容，他只需要誘導你在「登入狀態下」點擊一個惡意連結，讓你的瀏覽器幫他發送請求即可。
+
+****
+
+### 攻擊手段：它是如何發生的？
+假設銀行 A 的轉帳功能是透過一個簡單的 GET 請求完成： 
+```URL
+https://bank.com/transfer?to=Hacker&amount=10000
+```
+
+- **手段 A**： 透過圖片標籤 (GET 請求)
+黑客可以在自己控制的惡意論壇或網頁中，埋入一張隱形的圖片：
+```HTML
+<img src="https://bank.com/transfer?to=Hacker&amount=10000" width="0" height="0">
+```
+當你瀏覽這個論壇時，瀏覽器會嘗試加載圖片，自動對銀行發出轉帳請求。因為你剛好登入著銀行，請求就成功了。
+
+- **手段 B**：自動提交的表單 (POST 請求)  
+現代網站多用 POST 請求。黑客可以寫一段自動執行的 JavaScript：
+```HTML
+<form id="csrf-form" action="https://bank.com/transfer" method="POST">
+  <input type="hidden" name="to" value="Hacker">
+  <input type="hidden" name="amount" value="10000">
+</form>
+<script>document.getElementById('csrf-form').submit();</script>
+```
+只要你誤點惡意連結，這段代碼會瞬間幫你完成轉帳。
+
+****
+### 防禦方式：如何擋住 CSRF？
+
+#### 遵循 RESTful 原則（RESTful Principles）
+CSRF 最容易發生的場景是開發者錯誤地使用 GET 來執行修改操作（例如：`/transfer?amount=100`）。
+- 防禦邏輯：如果你遵循 REST，所有的修改都必須透過 POST/PUT/DELETE。
+- 瀏覽器限制：許多 CSRF 攻擊手段（如利用 `<img>` 標籤或簡單連結）只能發出 GET 請求。將修改權限限縮在 POST 以上，直接封死了這條最簡單的攻擊路徑。
+
+#### Anti-CSRF Token (最標準做法)
+伺服器在渲染頁面時，生成一個隨機且唯一的 Token 給前端，並存入 Session。
+- 流程：前端每次發送請求（如提交表單）時，必須帶上這個 Token。
+```HTML
+<form action="/process" method="POST">
+  <input type="hidden" name="_csrf" value="S8js92ksLpw02jsKsl82js...">
+  
+  <label>轉帳金額：</label>
+  <input type="text" name="amount">
+  <button type="submit">確認轉帳</button>
+</form>
+```
+- 為什麼有效：黑客雖然能誘使瀏覽器發送請求（帶 Cookie），但他無法跨網域讀取你頁面上的 Token，因此請求會被伺服器拒絕。
+
+#### SameSite Cookie 屬性
+這是在 Cookie 設定中加入一個新標籤，告訴瀏覽器：「只有當我在自己的網站下發送請求時，才准帶上這個 Cookie」。
+- SameSite=Strict：完全禁止第三方請求攜帶 Cookie（最安全，但可能影響體驗）。
+- SameSite=Lax：預設值，大多數第三方請求不帶 Cookie，但從外部點連結過來時會帶。
+
+#### 檢查 Referer 或 Origin Header
+伺服器檢查請求是從哪個網域（Origin）發過來的。
+- 如果請求是從 hacker-site.com 發過來要轉帳 bank.com 的錢，伺服器就直接擋掉。
+
+#### 雙重 Cookie 驗證 (Double Submit Cookie)
+用於前後端分離或無狀態 API。伺服器要求在 Cookie 中存一個隨機值，同時要求前端在 Header 或 Body 中再傳一次同樣的值。
+- 為什麼有效：黑客可以發送請求（帶 Cookie），但他無法「讀取」Cookie 內容並將其放入 Header。
+
+#### 重新進行身分驗證 (Re-authentication)
+在開發高安全性系統（如金融、電商、帳號設定）時，以下操作通常會強制要求重新驗證：
+- 密碼重定向：在修改電子郵件或密碼前，要求再次輸入目前的密碼。
+- 一次性密碼 (OTP)：透過簡訊、Email 或 Authenticator App 傳送 6 位數代碼。
+- 圖形驗證碼 (CAPTCHA)：要求使用者識別圖片或拖動滑塊。這能有效阻止黑客的自動化腳本。
+- 生物識別：如手機 App 轉帳時要求的 FaceID 或指紋。
+
+****
+### ⭐ 問題: 有CORS為甚麼還要檢查 Referer 或 Origin Header?
+CORS 的本質是**「瀏覽器對回應（Response）的存取控制」**，而不是「防止請求（Request）到達伺服器」。  
+我們需要根據請求的類型，拆解成兩種情況來看：
+
+#### 簡單請求 (Simple Requests) —— 先斬後奏
+對於簡單的 GET 或 POST 請求（例如傳統的表單提交內容類型），瀏覽器的行為是：
+1. 直接發送：瀏覽器直接把請求發給伺服器。
+2. 伺服器執行：伺服器收到後正常處理邏輯（例如：資料庫扣款、刪除留言）。
+3. 瀏覽器檢查：伺服器回傳結果後，瀏覽器查看 Access-Control-Allow-Origin。
+    - 如果不符：瀏覽器會攔截回應內容，並在 Console 報錯。
+    - 後果：雖然 JavaScript 拿不到回傳的資料，但伺服器端的動作已經完成了。這就是為什麼 CORS 無法防禦 CSRF 的原因。
+
+#### 非簡單請求 (Preflighted Requests) —— 先請示再行動
+對於使用了 PUT、DELETE 或自定義 Header（如 Authorization）的請求，瀏覽器會比較謹慎：
+
+- 發送 OPTIONS 請求：瀏覽器先發一個「預檢請求（Preflight）」，問伺服器准不准許。
+- 伺服器回應：伺服器告知允許的 Origin、Methods 等。
+- 再次決定是否發送正片：
+    - 如果不准：瀏覽器連正式的 DELETE 請求都不會發出去。
+    - 如果准許：才會發送真正的請求。

