@@ -13,13 +13,16 @@ export type PostMeta = {
 }
 
 export const CATEGORY_LIST = [
-  "Interview",
-  "Q & A",
-  "Engineering and Ops",
+  "Front-end Architecture",
   "React",
   "Vue / React Comparison",
+  "Performance",
+  "Security",
+  "Tool",
+  "Engineering and Ops",
   "Deep Dive and Research",
-  "Security"
+  "Interview",
+  "Q & A",
 ]
 const BLOG_DIR = path.join(process.cwd(), "src", "content", "blog")
 

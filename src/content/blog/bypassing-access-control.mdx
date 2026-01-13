@@ -1,0 +1,66 @@
+---
+title: "Bypassing Access Control"
+date: "2026-01-13"
+description: "Bypassing Access Control"
+tags: ["access-control"]
+cover: "/og/bypassing-access-control.png"
+category: "Security"
+---
+
+****  
+### 規避權限管制 (Bypassing Access Control)
+這屬於 Broken Access Control (OWASP Top 10 第 1 名)，指攻擊者繞過了身分驗證或授權檢查。
+
+#### 攻擊手段
+- 不安全的直接物件參照 (IDOR)：
+    - 手法：使用者 A 登入後，將網址 customer/1001 改成 customer/1002，結果看見了使用者 B 的資料。
+
+- 強行瀏覽 (Forced Browsing)：
+    - 手法：直接猜測並輸入隱藏的後台網址，如 /admin 或 /config.php，而系統未在這些頁面檢查權限。
+
+- 參數竄改：
+    - 手法：在請求中修改 role=user 為 role=admin。
+
+#### 防禦方式
+- 強制執行伺服器端檢查：絕對不能只靠前端（如隱藏按鈕）來防範。
+- 預設拒絕原則 (Default Deny)：除非明確授權，否則所有資源預設都不允許存取。
+- 使用不可預測的 ID：使用 UUID 而非遞增數值（如 user/1, user/2）。
+- 記錄與監控：紀錄所有存取失敗的行為，這通常是攻擊者在掃描路徑的徵兆。
+
+****
+### 權限提升 (Privilege Escalation)
+當攻擊者以低權限（如 www-data）進入系統後，嘗試取得更高權限（如 root 或 Administrator）。
+
+#### 攻擊手段
+- 垂直權限提升 (Vertical)：
+    - 核心漏洞利用：利用作業系統核心（Kernel）的漏洞（如著名的 Dirty COW）。
+    - 設定錯誤 (SUDO/SUID)：系統管理員錯誤地給予某些程式 root 權限。
+    - 不安全的服務路徑：Windows 系統中，路徑中包含空格且未加引號，導致執行了攻擊者的偽造程式。
+
+- 水平權限提升 (Horizontal)：
+    - 攻擊者取得與自己同等級的其他使用者帳號權限（類似 IDOR）。
+
+#### 防禦方式
+- 及時更新補丁：修補作業系統核心與第三方軟體的已知漏洞。
+- 最小權限原則 (PoLP)：程式應以「剛好夠用」的權限執行，例如網頁伺服器絕不應以 root 執行。
+- 定期稽核 SUID 檔案：檢查系統中具備提升權限能力的特殊檔案。
+- 強化密碼策略：防止攻擊者透過暴力破解取得特權帳號的密碼。
+
+****
+### 目錄遍歷 (Directory Traversal / Path Traversal)
+這是一種典型的輸入驗證漏洞，攻擊者利用系統路徑解析的特性，存取伺服器上原本不應公開的檔案。
+
+#### 攻擊手段
+- 點點斜線攻擊 (../)：利用回溯符號跳出網頁根目錄。
+    - 範例：https://example.com/view?file=../../../../etc/passwd
+
+- 編碼繞過：如果伺服器過濾了 ../，攻擊者會使用 URL 編碼或 Unicode 編碼繞過。
+    - 範例：..%2f..%2f (URL 編碼) 或 ..%c0%af (過度長編碼)。
+
+- 空字節截斷 (%00)：在舊版系統（如 PHP 5.3 以前）中，利用 %00 讓系統忽略後面的副檔名檢查。
+
+#### 防禦方式
+- 拒絕用戶輸入路徑：盡量使用「檔案 ID」而非檔案名稱（如 file=101 對應資料庫中的路徑）。
+- 路徑正規化 (Canonicalization)：在處理檔案前，先將路徑轉為絕對路徑，並檢查是否仍在預期目錄下。
+- 白名單機制：只允許存取特定的資料夾與檔案類型。
+- 使用 chroot jail：將網頁程式限制在一個虛擬的根目錄中。

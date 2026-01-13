@@ -1,0 +1,63 @@
+---
+title: "Information Disclosure"
+date: "2026-01-13"
+description: "Information Disclosure"
+tags: ["information-disclosure"]
+cover: "/og/information-disclosure.png"
+category: "Security"
+---
+
+****  
+### 常見的資訊外洩攻擊方法
+
+#### A. 錯誤訊息洩漏 (Error Message Leakage)
+這是最常見的形式。伺服器在發生異常時回傳詳細的偵錯（Debug）資訊。
+- 手法：輸入錯誤的參數或語法，誘發資料庫或框架噴出錯誤。
+- 洩漏內容：資料庫結構、SQL 指令、框架版本、伺服器內部路徑。
+- 風險：讓黑客精確掌握 SQL 注入點或已知漏洞路徑。
+
+#### B. 目錄索引與路徑洩漏 (Directory Indexing)
+伺服器配置不當，允許用戶列出資料夾內的所有檔案。
+- 手法：直接存取沒有 index.html 的目錄路徑（如 /images/ 或 /config/）。
+- 洩漏內容：備份檔案（.bak）、日誌檔、設定檔（.env）、原始碼。
+- 風險：黑客可能直接下載到包含資料庫帳密的 .env 檔案。
+
+#### C. 中繼資料與敏感檔案暴露 (Metadata & Hidden Files)
+- 手法：
+    - 版本控制洩漏：嘗試存取 /.git/ 或 /.svn/。
+    - 文件隱藏資訊：下載公開的 PDF/Office 文件，從中讀取作者名稱、軟體版本、內部印表機路徑。
+- 洩漏內容：完整的原始碼紀錄、開發者個資。
+
+#### D. 代碼註解洩漏 (Comments in Code)
+- 手法：檢視網頁原始碼（Ctrl+U）。
+- 洩漏內容：開發者在 HTML/JS 註解中留下的「Todo」清單、後台管理網址、甚至測試用的測試帳號密碼。
+
+#### E. 側寫與指紋識別 (Banner Grabbing & Fingerprinting)
+- 手法：觀察 HTTP Response Header。
+- 洩漏內容：Server: Apache/2.4.1 或 X-Powered-By: PHP/5.4.45。
+- 風險：黑客針對特定舊版本搜尋 CVE 漏洞。
+
+****
+### 資訊外洩的防禦方法
+防禦資訊外洩的核心在於**「最小化暴露面積」與「層級化安全配置」**。
+
+#### A. 統一的錯誤處理 (Generic Error Handling)
+- 作法：在生產環境（Production）中停用 Debug 模式。
+- 防禦：建立全域的錯誤攔截器，無論發生什麼錯誤，一律只對外顯示「系統忙碌中，請稍後再試」或導向 404 頁面，並將詳細錯誤記錄在內部日誌中。
+
+#### B. 嚴格的伺服器配置
+- 禁用目錄列清單：在 Nginx (禁用 autoindex) 或 Apache (移除 Indexes 選項) 中關閉目錄瀏覽功能。
+- 隱藏 Banner 資訊：
+    - Nginx: `server_tokens off;`
+    - PHP: `expose_php = Off;`
+
+#### C. 檔案存取限制與清理
+- 黑名單與白名單：嚴格限制如 .git, .env, .config, .bak 等檔案透過 Web 存取。
+- CI/CD 流程自動化：在部署時，自動移除所有 .git 資料夾與註解資訊，並使用工具（如 ExifTool）清理公開文件的中繼資料。
+
+#### D. 安全頭部 (Security Headers)
+- `X-Content-Type-Options: nosniff`：防止瀏覽器猜測 MIME 類型，避免將文字檔當作腳本執行。
+- `Content-Security-Policy (CSP)`：限制資源載入來源，防止外洩腳本執行。
+
+#### E. 靜態分析與掃描 (SAST/DAST)
+- 自動化檢測：使用掃描工具檢查原始碼中是否包含硬編碼（Hardcoded）的密鑰或敏感註解。
