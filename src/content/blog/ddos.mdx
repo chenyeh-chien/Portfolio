@@ -1,0 +1,55 @@
+---
+title: "Distributed Denial of Service (DDoS)"
+date: "2026-01-16"
+description: "DDoS"
+tags: ["ddos"]
+cover: "/og/ddos.png"
+category: "Security"
+---
+
+****
+在資安領域中，**DoS** (Denial of Service，阻斷服務攻擊) 與 **DDoS** (Distributed Denial of Service，分散式阻斷服務攻擊) 是針對「可用性 (Availability)」最常見的攻擊手段。
+
+它們的目的不是為了偷取資料，而是透過巨大的流量或資源消耗，讓目標伺服器癱瘓，使正常使用者無法存取服務。
+
+****
+### DoS 與 DDoS 的核心差異
+| 特性 | DoS (阻斷服務) | DDoS (分散式阻斷服務) |
+| --- | --- | --- |
+| 來源數量 | 單一來源 (一對一) | 成千上萬個來源 (多對一) |
+| 發動難度 | 較低，容易被單一 IP 封鎖。 | 極高，難以透過過濾單一 IP 來防護。 |
+| 攻擊力 | 有限，受限於攻擊者單機頻寬。 | 極大，匯集了全球「殭屍網路」的總頻寬。 |
+
+****
+### 常見的攻擊手段分類
+攻擊通常分為三種類型，每一種針對的資源都不同：
+
+#### A. 頻寬攻擊 (Volumetric Attacks)
+- 原理：用海量的垃圾流量塞滿你的對外網路頻寬。
+- 手法：UDP Flood、ICMP Flood。
+- 反射放大攻擊 (Amplification)：利用如 DNS 或 NTP 伺服器，發送小請求卻能讓該伺服器回傳極大的封包給受害者，達到 50 到 100 倍的放大效果。
+
+#### B. 協定攻擊 (Protocol Attacks)
+- 原理：消耗伺服器的「連線資源」（如防火牆、負載平衡器的連線表）。
+- 手法：SYN Flood。
+    - 過程：攻擊者發送大量的 SYN 請求（建立連線的第一步），但不理會伺服器的回應，導致伺服器產生大量「半開連線 (Half-open connections)」，耗盡記憶體資源。
+
+#### C. 應用層攻擊 (Application Layer Attacks / Layer 7)
+- 原理：針對特定的應用功能（如搜尋、資料庫查詢）。這類攻擊流量小，但非常耗 CPU 或資料庫資源。
+- 手法：HTTP Flood、Slowloris。
+    - Slowloris：以極慢的速度發送 HTTP Header，強迫伺服器保持連線不中斷，直到連線數被佔滿。
+
+****
+### 防禦 DDoS 的實際做法
+DDoS 防禦通常需要「層次化」的佈署，因為單靠一台伺服器是擋不住海量流量的。
+
+#### A. 使用 CDN 與雲端清洗中心
+- 做法：將流量導向如 Cloudflare, Akamai 或 AWS Shield。
+- 原理：這些服務具備全球分佈的節點，可以將流量「吸納」到其巨大的頻寬池中，過濾掉非法封包（清洗），只把正常的請求傳回你的伺服器。
+
+#### B. 硬體防火牆與負載平衡 (WAF/IPS)
+- 做法：佈署具備抗 DDoS 功能的硬體。
+- 技術：SYN Cookie（在不分配資源的情況下驗證連線真實性）或 連線限速 (Rate Limiting)。
+
+#### C. 流量特徵辨識 (Traffic Scrubbing)
+- 原理：分析封包的特徵（如異常的 User-Agent 或重複的行為模式），並利用黑名單機制攔截已知的惡意 IP 或是殭屍網路節點。

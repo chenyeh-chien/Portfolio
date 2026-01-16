@@ -1,0 +1,81 @@
+---
+title: "XML External Entity (XXE)"
+date: "2026-01-16"
+description: "XML External Entity"
+tags: ["xml-external-entity"]
+cover: "/og/xml-external-entity.png"
+category: "Security"
+---
+
+****  
+在網頁開發中，雖然 JSON 已成為主流，但在企業級系統、金融介面或舊有的 Web Services（如 SOAP）中，XML 仍被廣泛使用。由於 XML 規範本身的複雜性，如果解析器（XML Parser）設定不當，會帶來非常嚴重的資安風險。
+
+最核心的威脅稱為 XXE (XML External Entity, XML 外部實體注入)。
+
+****
+### 1. 核心攻擊：XXE (XML External Entity)
+XML 允許定義「實體」（Entities），這類似於變數。攻擊者可以利用這個特性，強制解析器去讀取伺服器的本地檔案或連向外部網路。
+
+#### A. 檔案讀取 (Local File Disclosure)
+攻擊者定義一個外部實體，指向伺服器的敏感檔案（如 /etc/passwd 或設定檔）。
+
+惡意 XML 範例：
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE data [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<user>
+  <name>&xxe;</name>
+</user>
+```
+- 後果：當伺服器解析這個 XML 並回傳用戶名時，原本應該顯示名字的地方會變成 /etc/passwd 的內容。
+
+#### B. 伺服器端請求偽造 (SSRF)
+攻擊者讓伺服器去請求內部網路的資源。
+- 範例 (嘗試讀取 AWS 雲端金鑰)：
+```xml
+<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">
+``` 
+- 後果：攻擊者可以利用 Web 伺服器作為跳板，掃描內網或攻擊內部 API。
+
+****
+### 2. 拒絕服務攻擊：XML Bomb (Billion Laughs)
+這是一種針對解析器資源耗盡的攻擊。利用實體嵌套定義，讓 XML 在解析時產生指數級的記憶體膨脹。
+
+惡意 XML 範例：
+```xml
+<?xml version="1.0"?>
+<!DOCTYPE lolz [
+ <!ENTITY lol "lol">
+ <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+ <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+ ]>
+<tag>&lol9;</tag>
+```
+- 後果：僅僅幾 KB 的 XML 檔案，在解析後會占用數 GB 的記憶體，導致伺服器當機（DoS）。
+
+****
+### 防禦方式：如何安全地解析 XML？
+防禦 XML 攻擊的最有效手段不是過濾字串，而是**「正確配置解析器」**。
+
+#### A. 禁用外部實體 (最重要)
+這是防禦 XXE 的黃金標準。在代碼中關閉 DTD (Document Type Definition) 或外部實體的解析。
+
+#### B. 使用 JSON 替代
+如果業務邏輯允許，盡量將數據格式轉為 JSON。JSON 的結構簡單，天然不具備 XXE 這種「變數定義」的風險。
+
+#### C. 限制解析器資源
+針對 XML Bomb，應在伺服器層級限制：
+- 最大解析時間。
+- 最大記憶體使用量。
+- 限制實體嵌套的深度。
+
+****
+### 總結對比表
+| 攻擊名稱 | 攻擊目標 | 防禦核心 |
+| --- | --- | --- |
+| XXE (檔案讀取) | 讀取伺服器敏感檔案 (如 /etc/shadow) | 禁用 DTD / External Entities |
+| XXE (SSRF) | 掃描內網、攻擊內部未授權 API | 禁用網路連線 (NONET) |
+| XML Bomb | 耗盡伺服器 RAM/CPU，造成當機 | 限制實體擴展與嵌套深度 |
+| Xpath Injection | 絕過登入或查詢不應存取的 XML 資料 | 使用參數化查詢 (類似 SQLi 防禦) |

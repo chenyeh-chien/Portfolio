@@ -1,0 +1,24 @@
+---
+title: "Email Spoofing / Phishing"
+date: "2026-01-16"
+description: "Email Spoofing"
+tags: ["email-spoofing"]
+cover: "/og/email-spoofing.png"
+category: "Security"
+---
+
+****
+### 電子郵件詐騙 (Email Spoofing / Phishing)
+這是最常見的進入點，攻擊者偽造發信人地址，讓收件人以為郵件來自信任的來源（如銀行、上司或 IT 部門）
+
+#### 攻擊手段
+- 網域偽造 (Spoofing)：直接偽造 From 欄位。
+- 相似網域 (Typosquatting)：註冊極為相似的網域（如 g00gle.com 而非 google.com）。
+- 商業郵件詐騙 (BEC)：鎖定財務或高階主管，要求緊急匯款或提供敏感資料。
+- 附件木馬：在 Excel 或 PDF 中埋入惡意巨集（Macro）或漏洞利用程式。
+
+#### 防禦方式 (技術與管理)
+- SPF (Sender Policy Framework)：在 DNS 中條列哪些伺服器可以代表你的網域發信。
+- DKIM (DomainKeys Identified Mail)：為郵件加上數位簽章，確保內容未被竄改。
+- DMARC：結合 SPF 與 DKIM，告訴收信方如果驗證失敗該如何處理（如直接丟棄或標記為垃圾郵件）。
+- 多因素驗證 (MFA)：即便駭客騙到了密碼，也無法進入帳號。

@@ -1,0 +1,23 @@
+---
+title: "Clickjacking"
+date: "2026-01-16"
+description: "Clickjacking"
+tags: ["clickjacking"]
+cover: "/og/clickjacking.png"
+category: "Security"
+---
+
+****
+### 點擊劫持 (Clickjacking)
+這是一種「視覺欺騙」攻擊。駭客將惡意網頁以「透明層」的方式覆蓋在一個看似正常的網頁（或按鈕）之上。
+
+#### 攻擊手段
+- iframe 覆蓋：駭客在他的網站（evil.com）中，用透明的 `<iframe>` 嵌入你的銀行頁面或社群設定頁面。
+- 誘導點擊：你在畫面上點擊「抽獎」按鈕，但實際上你的點擊穿透到了下方的透明層，觸發了「確認轉帳」或「刪除帳號」。
+
+#### 防禦方式
+- X-Frame-Options (Header)：
+    - DENY：完全禁止被嵌入。
+    - SAMEORIGIN：只允許同網域的頁面嵌入。
+- Content-Security-Policy (CSP)：使用 **frame-ancestors** 指令，精確控制哪些網域可以嵌入你的頁面。
+- Frame Busting 腳本：在前端加入 JS，檢測自己是否被嵌入，若是則強制跳轉。
