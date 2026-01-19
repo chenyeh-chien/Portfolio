@@ -8,3 +8,48 @@ category: "Security"
 ---
 
 ****  
+內容安全政策 (Content Security Policy, CSP) 是現代網頁開發中最重要的防禦機制之一。它的核心目的是透過「白名單」機制，告訴瀏覽器哪些來源的資源（如腳本、樣式、圖片）是受信任的，藉此有效防範 XSS (跨網站腳本攻擊) 與 Clickjacking (點擊劫持)。
+
+****
+### CSP 的運作原理
+當使用者訪問網頁時，伺服器會在 HTTP 回應標頭中加入 Content-Security-Policy。瀏覽器收到後會嚴格執行這些規則。如果網頁試圖載入不在白名單內的資源，瀏覽器會直接阻斷該請求並在控制台報錯。
+
+****
+### 常見的實作指令 (Directives)
+CSP 透過不同的指令來控制不同類型的資源：
+
+| 指令 | 說明 |
+| --- | --- |
+| default-src | 預設原則。若其他指令未設定，則以此為準。 |
+| script-src | 控制 JavaScript 的來源。 |
+| style-src | 控制 CSS 樣式表的來源。 |
+| img-src | 控制圖片的來源。 |
+| connect-src | 限制 Fetch、XMLHttpRequest 或 WebSocket 的連線目標。 |
+| frame-ancestors | 規定哪些網域可以將本頁嵌入 iframe（防範 Clickjacking）。 |
+
+#### 關鍵屬性值：
+- 'self'：僅允許來自與目前網頁同來源（相同網域、通訊協定、連接埠）的資源。
+- 'none'：不允許任何資源。
+- https:：僅允許透過 HTTPS 載入資源。
+- 'unsafe-inline'：允許內嵌腳本（不建議使用，會降低 XSS 防禦力）。
+
+****
+### 如何在網頁中實作?
+主要有兩種方式：
+
+#### 方式 A：透過後端伺服器設定
+這是在伺服器（如 Nginx, Apache）或後端框架中加入 HTTP Header。這是最安全的方法。
+
+- Nginx 範例：
+```nginx
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://trusted.com;";
+```
+
+#### 方式 B：透過 HTML Meta 標籤
+如果你無法修改伺服器設定（例如靜態網站空間），可以在 HTML 的 `<head>` 標籤中加入：
+```html
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src https://*; ">
+```
+
+
+
