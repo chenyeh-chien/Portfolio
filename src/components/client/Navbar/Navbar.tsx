@@ -32,7 +32,7 @@ export default function Navbar({ blogMenu, handleShowSidebar, showSidebar }: Pro
     <header
       className={clsx(
         "fixed top-0 z-9 w-full bg-(--navbar-bg)",
-        "text-(--navbar-color) px-5 pt-3 flex justify-between"
+        "text-(--navbar-color) px-5 py-3 flex justify-between"
       )}>
       <button
         className="lg:hidden hover:cursor-pointer"

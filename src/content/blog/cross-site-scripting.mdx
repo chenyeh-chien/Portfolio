@@ -45,7 +45,7 @@ https://bank.com/search?q=<script>alert('Hacked')</script>
 
 | 防禦手段 | 說明 |
 | --- | --- |
-| 輸出轉義 (Output Encoding) | 將 < 轉為 &lt;，> 轉為 &gt;。這是最基本的防禦。 |
+| 輸出轉義 (Output Encoding) | 將 `<` 轉為 `&lt;`，`>` 轉為 `&gt;`。這是最基本的防禦。 |
 | 使用安全屬性 | 在 JS 中優先使用 .textContent 而非 .innerHTML，前者會把輸入當純文字處理。 |
 | HttpOnly Cookie | 在設定 Cookie 時加上 HttpOnly 標記，這樣 JS 就無法透過 document.cookie 讀取它。 |
 | 內容安全策略 (CSP) | 透過 HTTP Header 設定 Content-Security-Policy，限制瀏覽器只能執行來自受信任來源的腳本。 |

@@ -7,12 +7,12 @@ cover: "/og/this.png"
 category: "Deep Dive and Research"
 ---
 
-1. If the new keyword is used when calling the function, meaning the function was used as a function constructor, the this inside the function is the newly-created object instance.
-2. If this is used in a class constructor, the this inside the constructor is the newly-created object instance.
-3. If apply(), call(), or bind() is used to call/create a function, this inside the function is the object that is passed in as the argument.
-4. If a function is called as a method (e.g. obj.method())—this is the object that the function is a property of.
-5. If a function is invoked as a free function invocation, meaning it was invoked without any of the conditions present above, this is the global object. In the browser, the global object is the window object. If in strict mode ('use strict';), this will be undefined instead of the global object.
+1. If the **new** keyword is used when calling the function, meaning the function was used as a function constructor, the this inside the function is the newly-created object instance.
+2. If this is used in a **class constructor**, the this inside the constructor is the newly-created object instance.
+3. If **apply(), call(), or bind()** is used to call/create a function, this inside the function is the object that is passed in as the argument.
+4. If a function is called as a **method** (e.g. obj.method())—this is the object that the function is a property of.
+5. If a function is invoked as a **free function invocation**, meaning it was invoked without any of the conditions present above, this is the global object. In the browser, the global object is the window object. If in strict mode ('use strict';), this will be undefined instead of the global object.
 6. If multiple of the above rules apply, the rule that is higher wins and will set the this value.
-7. If the function is an ES2015 arrow function, it ignores all the rules above and receives the this value of its surrounding scope at the time it is created.
+7. If the function is an **ES2015 arrow function**, it ignores all the rules above and receives the this value of its surrounding scope at the time it is created.
 
-- The value of this is determined by how a function is called, not where it is defined.
+- The value of this is determined by **how a function is called**, not where it is defined.
