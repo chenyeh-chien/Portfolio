@@ -1,0 +1,86 @@
+---
+title: "Cape v2 Build Up Instruction"
+date: "2026-03-17"
+description: "Cape v2 Build Up Instruction"
+tags: ["cape-v2", "build-up-instruction", "security"]
+cover: "/og/cape-v2-build-up-instruction.png"
+category: "DAST"
+---
+
+****
+
+#### 第一步：準備與安裝 KVM 虛擬化環境
+在安裝 CAPE 之前，Ubuntu 必須具備執行虛擬機的能力。CAPE 主要是透過 KVM/QEMU 來驅動 Guest VM。
+
+- 檢查硬體是否支援虛擬化：
+```bash
+egrep -c '(vmx|svm)' /proc/cpuinfo
+```
+如果輸出大於 0，代表支援。
+
+- 安裝 KVM 核心組件：
+```bash
+sudo apt update
+sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
+```
+
+- 啟動並檢查 libvirt 服務：
+```bash
+sudo systemctl enable --now libvirtd
+# 確認運作中
+sudo virsh list --all
+```
+****
+
+#### 第二步：使用 CAPE 官方腳本安裝 (CAPE-Installer)
+直接手動安裝 CAPE 非常複雜（涉及數十個套件與路徑）。社群提供了一個優化的安裝腳本，可以幫您自動處理 Python 環境與依賴項。  
+
+- 下載腳本：  
+前往 GitHub 搜尋 doomedraven/CAPE-Installer（這是目前最主流的安裝輔助工具）。  
+
+- 執行安裝：
+```bash
+chmod +x cape-install.sh
+sudo ./cape-install.sh
+```
+
+注意：這個過程會安裝 PostgreSQL, Suricata (網路監控), YARA 等工具，大約需要 20-40 分鐘。
+
+****
+
+#### 第三步：製作並配置 Guest VM (測試的關鍵)
+這是最花時間的一步，因為你需要準備一個「被監控」的作業系統映像檔。  
+
+- 建立 VM：  
+使用 virt-manager (圖形介面) 或指令建立一個 Windows 10 VM。  
+
+- 優化 Guest：  
+停用防毒： 必須關閉 Windows Defender 與 Windows Update（避免它們干擾惡意程式運行或誤殺 CAPE 監控工具）。  
+
+- 安裝 Python：  
+在 VM 內安裝 Python 3.x（用於執行 CAPE 的 Agent）。  
+
+- 部署 Agent：  
+將 CAPE 資料夾內的 agent.py 放入 VM 內並執行。  
+
+- 拍攝快照 (Snapshot)：  
+這是 CAPE 運作的核心。在 Agent 運行的狀態下，使用 virsh 或介面拍攝一個名為 "CAPE" 的快照。CAPE 每次測試完都會將 VM 回滾到這個乾淨的狀態。  
+
+****
+
+#### 第四步：進行能力測試 (Detonation)
+一旦 VM 就緒，您就可以開始測試它的能力：
+- 啟動 Web 介面：  
+預設在 http://localhost:8000。
+- 上傳套件：  
+拿一個您之前提到的 .tgz 檔案。
+- 設定參數：  
+選擇對應的機器（Windows 或 Linux）。
+- 在 Command 欄位輸入：  
+```bash
+npm install ./package.tgz
+```
+- 觀察報告：
+  - Signatures (特徵碼)： 看它有沒有偵測到 "Persistence" (持久化) 或 "Stealer" (竊密) 特徵。
+  - Network (網路)： 看有沒有連向陌生 IP 的 HTTP 請求。
+  - Dropped Files： 安裝過程中是否在 temp 資料夾產生了可疑的 .exe？

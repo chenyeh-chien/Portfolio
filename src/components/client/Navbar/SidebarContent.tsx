@@ -29,7 +29,7 @@ export default function SidebarContent({
         'fixed left-0 top-14 h-[calc(100vh-56px)] p-5',
         'opacity-0 duration-300 ease-in-out -translate-x-full',
         showSidebar && 'opacity-100 translate-x-0',
-        'bg-white w-full overflow-y-auto',
+        'bg-(--sidebar-bg) text-(--sidebar-color) w-full overflow-y-auto',
         'lg:hidden'
       )}
       aria-label="Mobile navigation menu">

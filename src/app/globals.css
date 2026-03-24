@@ -13,6 +13,8 @@
 
     --navbar-bg: var(--background-color);
     --navbar-color: var(--text-color);
+    --sidebar-bg: var(--background-color);
+    --sidebar-color: var(--text-color);
 
     --button-bg: var(--accent-color);
     --button-color: white;
@@ -29,6 +31,8 @@
 
     --navbar-bg: var(--background-color);
     --navbar-color: var(--text-color);
+    --sidebar-bg: var(--background-color);
+    --sidebar-color: var(--text-color);
 
     --button-bg: var(--accent-color);
     --button-color: white;

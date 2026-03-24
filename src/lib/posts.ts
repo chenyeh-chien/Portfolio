@@ -18,6 +18,8 @@ export const CATEGORY_LIST = [
   "Vue / React Comparison",
   "Performance",
   "Security",
+  "DAST",
+  "Black Duck",
   "Tool",
   "Engineering and Ops",
   "Deep Dive and Research",

@@ -1,0 +1,476 @@
+---
+title: "Black Duck Auto Remove Retired Users"
+date: "2026-03-17"
+description: "Black Duck Auto Remove Retired Users"
+tags: ["black-duck", "automation", "devsecops"]
+cover: "/og/black-duck-auto-remove-retired-users.png"
+category: "Black Duck"
+---
+
+****
+#### 3/18 更新:  
+改由兩台VM (OA / 測網VM) 分頭執行，並利用共用資料夾分享資料
+
+****
+### 目標流程:
+- OA VM: 
+    - 讀取共享資料夾檔案: blackduck_users.json
+    - 呼叫LDAP API, 取得在職狀態
+    - 寫入共享資料夾檔案: blackduck_users_status.json
+- 測網VM: 
+    - 呼叫Black Duck API, 取得使用者清單
+    - 寫入共享資料夾檔案: blackduck_users.json
+    - 讀取共享資料夾檔案: blackduck_users_status.json
+    - 呼叫Black Duck API, 取得使用者的群組清單
+    - 呼叫Black Duck API, 將使用者從群組移除
+    - 呼叫Black Duck API, 更新使用者為Inactive
+
+### 執行步驟:
+#### OA VM:
+- 建立資料夾
+```bash
+cd /home/user
+mkdir ./black-duck/remove-retired-users
+cd ./black-duck/remove-retired-users
+```
+
+- 建立相關檔案並更新內容
+```bash
+touch .env
+touch blackduck-verify-users.js
+touch blackduck-verify-users.Dockerfile
+touch package.json
+```
+
+- 建立 Docker Image
+```bash
+docker build -t blackduck-verify-users .
+```
+
+- 建立 Cron Job
+```bash
+0 0 * * * docker run --rm -v /home/user/logs:/app/logs blackduck-verify-users
+```
+
+#### 測網VM:
+- 建立資料夾
+```bash
+cd /home/user
+mkdir ./black-duck/blackduck-verify-users
+cd ./black-duck/blackduck-verify-users
+```
+
+- 建立相關檔案並更新內容
+```bash
+touch .env
+touch blackduck-verify-users.js
+touch blackduck-verify-users.Dockerfile
+touch package.json
+```
+
+- 建立 Docker Image
+```bash
+docker build -t blackduck-verify-users .
+```
+
+- 建立 Cron Job
+```bash
+0 0 * * * docker run --rm -v /home/user/logs:/app/logs blackduck-verify-users
+```
+
+
+### 任務經驗累積:
+1. 跟MIS不同部門同事合作並取得公司LDAP API
+2. 利用VM cron job來定期執行任務
+3. 使用docker container避免環境無汙染
+4. 使用.env檔避免機密資訊外洩
+
+****
+### ⭐ LDAP API
+#### 1. 認證 (取得 Bearer Token)
+
+```
+POST http://srmsoa-test.pegatroncorp.com/PegaSrm.ePO.Common.WebApi/api/Token/Token/FetchLongToken
+```
+
+Body: 
+```json
+{
+  "user": "SSS",
+  "PassKey": "56945615-4739-4441-8788-2f5f8028c9cc",
+  "Ip": "",
+  "Email": ""
+}
+```
+
+Output:
+```json
+{
+  "ReturnCode": "000",
+  "ReturnMessage": "..."
+}
+```
+
+#### 2. 取得在職狀態
+```
+POST http://srmsoa-test.pegatroncorp.com/PegaSrm.ePO.Common.WebApi/api/Internal/UserStatus/UserList
+```
+
+Header:
+```
+Authorization: Bearer <YOUR_BEARER_TOKEN>
+```
+
+Body: 
+```json
+{
+  "Input": "Lynn_Lien,Steven8_Lee, michelle_huang"
+}
+```
+
+Output:
+```json
+{
+  "ReturnCode": "000",
+  "ReturnMessage": "Process successful",
+  "Result": [
+    {
+      "Input": "Lynn_Lien",
+      "Domain_Name": "Lynn_Lien",
+      "AccountStatus": "Y"
+    },
+    {
+      "Input": "Steven8_Lee",
+      "Domain_Name": "Steven8_Lee",
+      "AccountStatus": "Y"
+    },
+    {
+      "Input": "michelle_huang",
+      "Domain_Name": "michelle_huang",
+      "AccountStatus": "X"
+    }
+  ]
+}
+```
+
+****
+
+### ⭐ Black Duck API 
+#### 1. 認證 (取得 Bearer Token)
+在呼叫任何 API 之前，必須先用 API Token 換取臨時的 bearerToken。
+
+```
+POST /api/tokens/authenticate
+```
+
+Header:
+```
+Authorization: token <YOUR_API_TOKEN>
+Accept: application/vnd.blackducksoftware.user-4+json
+```
+
+#### 2. 獲取用戶清單 (Get Users)
+這是您用來與 LDAP 進行比對的核心 API。
+
+```
+GET /api/users
+```
+
+- 常用參數 (Query Parameters):
+    - limit: 預設值通常較小（如 20），建議設為 limit=1000 以一次獲取更多帳號。
+    - offset: 用於分頁處理（如果帳號數超過 1000）。
+
+Header:
+```
+Authorization: Bearer <YOUR_BEARER_TOKEN>
+Accept: application/vnd.blackducksoftware.user-4+json
+```
+
+Output:
+```json
+{
+  "totalCount": 150,
+  "items": [
+    {
+      "userName": "john.doe",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@company.com",
+      "active": true,
+      "type": "EXTERNAL", // EXTERNAL 通常指 LDAP/SAML 帳號，INTERNAL 為本地帳號
+      "_meta": {
+        "href": "https://bd.company.com/api/users/83a7...", // 這是該用戶的唯一 ID URL
+        "links": [...]
+      }
+    }
+  ]
+}
+```
+
+#### 3. 獲取使用者的群組清單
+```
+GET /api/users/{userId}/usergroups
+```
+
+#### 4. 將使用者從群組移除
+```
+DELETE /api/usergroups/{userGroupId}/users/{userId}
+```
+
+#### 5. 更新使用者為 Inactive
+```
+PUT /api/users/{userId}
+```
+
+Body:
+```json
+{
+  "userName": "target_user",
+  "firstName": "...",
+  "lastName": "...",
+  "email": "...",
+  "active": false,  // 關鍵點
+  "type": "EXTERNAL"
+}
+```
+
+****
+### ⭐ blackduck-verify-users.js (OA VM):
+```javascript
+
+```
+
+### ⭐ blackduck-verify-users.js (Test VM):
+```javascript
+import dotenv from "dotenv";
+dotenv.config();
+
+const API_TOKEN = process.env.BLACK_DUCK_API_TOKEN;
+const BLACK_DUCK_URL = process.env.BLACK_DUCK_URL;
+
+async function getBlackDuckBearerToken() {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/tokens/authenticate`, {
+    method: "POST",
+    headers: {
+      "Authorization": `token ${API_TOKEN}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get bearer token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.token;
+}
+
+async function getAllUsers(bearerToken) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/users`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get all users: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.items;
+}
+
+async function getUserGroupsByUserId(userId) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/users/${userId}/usergroups`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get user groups: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+async function removeUserFromGroup(userGroup, userId) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/usergroups/${userGroup.id}/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to remove user from group: ${response.statusText}`);
+  }
+}
+
+async function updateUser(userId, data) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/users/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update user: ${response.statusText}`);
+  }
+}
+
+async function deactivateUsers() {
+  // get bearer tokens
+  const blackDuckBearerToken = await getBlackDuckBearerToken();
+  const srmBearerToken = await getSRMBearerToken();
+
+  const allUsers = await getAllUsers(blackDuckBearerToken);
+  const userNames = allUsers.map((user) => user.userName);
+  const ldapUserInfoList = await getLDAPUserInfoByNameList(
+    srmBearerToken,
+    userNames
+  );
+
+  for (let user of ldapUserInfoList) {
+    if (user.AccountStatus === "Y") {
+      continue;
+    } 
+
+    // get user groups
+    const userGroups = getUserGroupsByUserId(user.userId);
+
+    // remove user from groups
+    for (let group of userGroups) {
+      await removeUserFromGroup(group, user.userId);
+    }
+    
+    // deactivate the user
+    await updateUser(user.userId,{
+      ...user,
+      active: false
+    });
+  }
+}
+
+deactivateUsers();
+```
+
+### ⭐ deactivate_users.js
+```javascript
+// get BLACK DUCK access token
+import dotenv from "dotenv";
+dotenv.config();
+
+const SRM_URL = process.env.SRM_URL;
+
+async function getSRMBearerToken() {
+  const response = await fetch(`${SRM_URL}/api/Token/Token/FetchLongToken`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      "user": "SSS",
+      "PassKey": "56945615-4739-4441-8788-2f5f8028c9cc",
+      "Ip": "",
+      "Email": ""
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get bearer token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.ReturnMessage;
+}
+
+async function getLDAPUserInfoByNameList(bearerToken, list) {
+  const input = list.join(",");
+  const response = await fetch(`${SRM_URL}/api/Internal/UserStatus/UserList`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      "Input": input
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get LDAP user info: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.Result;
+}
+
+async function deactivateUsers() {
+  // get bearer tokens
+  const blackDuckBearerToken = await getBlackDuckBearerToken();
+  const srmBearerToken = await getSRMBearerToken();
+
+  const allUsers = await getAllUsers(blackDuckBearerToken);
+  const userNames = allUsers.map((user) => user.userName);
+  const ldapUserInfoList = await getLDAPUserInfoByNameList(
+    srmBearerToken,
+    userNames
+  );
+
+  for (let user of ldapUserInfoList) {
+    if (user.AccountStatus === "Y") {
+      continue;
+    } 
+
+    // get user groups
+    const userGroups = getUserGroupsByUserId(user.userId);
+
+    // remove user from groups
+    for (let group of userGroups) {
+      await removeUserFromGroup(group, user.userId);
+    }
+    
+    // deactivate the user
+    await updateUser(user.userId,{
+      ...user,
+      active: false
+    });
+  }
+}
+
+deactivateUsers();
+```
+****
+
+### ⭐ deactivate_bd_users.Dockerfile
+```dockerfile
+FROM node:latest
+
+RUN mkdir -p /usr/src/app
+COPY ./black-duck/ /usr/src/app/
+
+ENV BLACK_DUCK_API_TOKEN=<BLACK_DUCK_API_TOKEN>
+ENV BLACK_DUCK_URL=<BLACK_DUCK_URL>
+
+WORKDIR /usr/src/app
+RUN npm i
+
+CMD ["node", "deactivate_users.js"]
+```
+
+****
+### ⭐ VM Cron Job
+每天凌晨 12 點整，自動啟動 Node.js 執行 deactivate_users.js 腳本，並將所有的執行過程與錯誤紀錄，全部紀錄到 /home/user/logs/sync.log 檔案中。
+```bash
+0 0 * * * docker run --rm -v /home/user/logs:/app/logs deactivate_bd_users
+```
+
+

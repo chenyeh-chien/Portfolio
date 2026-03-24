@@ -1,0 +1,28 @@
+---
+title: "Cape v2 vs Sandboxie Plus"
+date: "2026-03-17"
+description: "Cape v2 vs Sandboxie Plus"
+tags: ["cape-v2", "sandboxie-plus", "security"]
+cover: "/og/cape-v2-vs-sandboxie-plus.png"
+category: "DAST"
+---
+
+#### 效能需求:
+- Sandboxie Plus ✔️: 可以在Windows上直接運行且效能需求很低
+- CAPE v2: 需要在Linux環境下開多個Windows VM，所以需要高效能主機
+
+#### 報告層面:
+- Sandboxie Plus: 主要透過監控面板進行判斷，需用額外套件將內容parse出來
+- CAPE v2 ✔️: 有專屬的JSON檔可以查看
+
+#### API對接:
+- Sandboxie Plus: 需自行利用如Flask包裝後收到指令並呼叫本地指令進行測試
+- CAPE v2 ✔️: 完整的 REST API
+
+#### 串接CI/CD:
+- Sandboxie Plus: .gitlab-ci.yml 必須包含複雜的 powershell 指令來監控沙箱路徑的檔案變化。
+- CAPE v2 ✔️: GitLab Runner 只需要使用 curl 或 Python requests 就能將 .tgz 送入 CAPEv2。
+
+#### 結論:
+- Sandboxie Plus: 報告較簡陋，適合手動/本地進行測試
+- CAPE v2: 雖然需要較高效能的主機，但對於自動化驗證來說是強大的工具
