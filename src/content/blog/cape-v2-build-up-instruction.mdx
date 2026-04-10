@@ -1,30 +1,45 @@
 ---
-title: "Cape v2 Build Up Instruction"
+title: "Cape v2 沙箱建制SOP"
 date: "2026-03-17"
-description: "Cape v2 Build Up Instruction"
+description: "Cape v2 沙箱建制SOP"
 tags: ["cape-v2", "build-up-instruction", "security"]
 cover: "/og/cape-v2-build-up-instruction.png"
 category: "DAST"
 ---
 
 ****
+### 環境需求
 
-#### 第一步：準備與安裝 KVM 虛擬化環境
+| 項目 | 最低需求 (Minimum) | 建議需求 (Recommended) | 備註 |
+| --- | --- | --- | --- |
+| CPU 核心 | 8 vCPU | 16 vCPU+ | 必須支援並開啟 Nested Virtualization。 |
+| 記憶體 (RAM) | 16 GB | 32 GB ~ 64 GB | Windows Guest 需要分配 4-8G，Nexus 需要 8G+。 |
+| 硬碟 (SSD) | 200 GB | 500 GB+ | 必須是 SSD (最好是 NVMe)。HDD 會讓 VM 重置時間增加數倍。 |
+| 作業系統 | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | 目前 CAPEv2 安裝腳本在此版本最穩定。 |
+
+****
+
+### 第一步：準備與安裝 KVM 虛擬化環境
 在安裝 CAPE 之前，Ubuntu 必須具備執行虛擬機的能力。CAPE 主要是透過 KVM/QEMU 來驅動 Guest VM。
 
-- 檢查硬體是否支援虛擬化：
+#### 檢查硬體是否支援虛擬化：
 ```bash
 egrep -c '(vmx|svm)' /proc/cpuinfo
 ```
 如果輸出大於 0，代表支援。
 
-- 安裝 KVM 核心組件：
+#### 確認 KVM 加速
 ```bash
-sudo apt update
+sudo apt update && sudo apt install -y cpu-checker
+kvm-ok
+```
+
+#### 安裝 KVM 核心組件：
+```bash
 sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
 ```
 
-- 啟動並檢查 libvirt 服務：
+#### 啟動並檢查 libvirt 服務：
 ```bash
 sudo systemctl enable --now libvirtd
 # 確認運作中
@@ -32,55 +47,411 @@ sudo virsh list --all
 ```
 ****
 
-#### 第二步：使用 CAPE 官方腳本安裝 (CAPE-Installer)
-直接手動安裝 CAPE 非常複雜（涉及數十個套件與路徑）。社群提供了一個優化的安裝腳本，可以幫您自動處理 Python 環境與依賴項。  
+### 第二步： 安裝 cape2.sh
 
-- 下載腳本：  
-前往 GitHub 搜尋 doomedraven/CAPE-Installer（這是目前最主流的安裝輔助工具）。  
-
-- 執行安裝：
+#### 下載腳本：  
 ```bash
-chmod +x cape-install.sh
-sudo ./cape-install.sh
+wget https://raw.githubusercontent.com/kevoreilly/CAPEv2/master/installer/cape2.sh
 ```
 
-注意：這個過程會安裝 PostgreSQL, Suricata (網路監控), YARA 等工具，大約需要 20-40 分鐘。
+#### 準備環境 (避免腳本報錯)
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl sudo
+```
+
+#### 執行安裝：  
+注意：這個過程會安裝 PostgreSQL, Suricata (網路監控), YARA 等工具，大約需要 20-40 分鐘
+```bash
+chmod +x cape2.sh
+
+# 執行完整安裝 (包含 env, deps, cape 等)
+sudo ./cape2.sh all
+```
+
+#### 檢查是否安裝成功
+```bash
+# 檢查 CAPE 核心引擎 (負責任務排程)
+sudo systemctl status cape.service
+
+# 檢查 CAPE Web 介面 (負責 API 與 網頁)
+sudo systemctl status cape-web.service
+
+# 檢查 CAPE 處理節點
+sudo systemctl status cape-processor.service
+```
+
+#### 虛擬化網路檢查 (檢查神經)  
+CAPE 必須有一條「私有的地下通道」來跟未來的 Windows VM 溝通：
+```bash
+# 檢查虛擬化服務
+sudo virsh net-list --all
+```
 
 ****
 
-#### 第三步：製作並配置 Guest VM (測試的關鍵)
+### 第三步：製作並配置 Guest VM (測試的關鍵)
 這是最花時間的一步，因為你需要準備一個「被監控」的作業系統映像檔。  
 
-- 建立 VM：  
+#### 確認libvirt安裝成功：
+```bash
+sudo systemctl enable --now libvirtd
+sudo systemctl start libvirtd
+
+# 再次檢查指令是否可用
+virsh --version
+
+# 重要：權限設定 (不設定 CAPE 會動不了)
+sudo usermod -aG libvirt $USER
+sudo usermod -aG kvm $USER
+```
+
+#### CAPE 需要一個虛擬網段來分配 IP 給沙箱。請輸入：
+```bash
+sudo virsh net-list --all
+
+# 如果顯示 default 但狀態是 inactive：
+sudo virsh net-start default
+sudo virsh net-autostart default
+```
+
+Q: 
+```
+Traceback (most recent call last):
+
+  File "/opt/CAPEv2/web/manage.py", line 12, in <module>
+
+    from django.core.management import execute_from_command_line
+
+ModuleNotFoundError: No module named 'django'
+```
+
+A: 
+```bash
+# 安裝 Python 虛擬環境工具
+sudo apt update
+sudo apt install -y python3-venv python3-dev libsasl2-dev libldap2-dev libssl-dev libfuzzy-dev swig libtool libjansson-dev
+
+# 建立並進入虛擬環境
+cd /opt/CAPEv2
+
+# 如果之前有建立失敗的 venv，先刪除確保乾淨
+rm -rf venv
+
+# 重新建立虛擬環境
+python3 -m venv venv
+source venv/bin/activate
+
+# 確保 pip 是最新的
+pip install --upgrade pip setuptools wheel
+
+# 安裝 CAPE 所有的 Python 套件 (這需要幾分鐘)
+pip install -r requirements.txt
+
+# 檢查路徑與權限
+sudo chown -R $USER:$USER /opt/CAPEv2
+```
+
+Q: 界面沒有正確導入CSS  
+A:
+執行 Django 的靜態檔案收集指令
+```bash
+python3 web/manage.py collectstatic --noinput
+
+# 給予讀取權限 (避免 Django 讀不到檔案)
+sudo chmod -R 755 /opt/CAPEv2/web/static
+```
+
+修改 Django 設定檔
+```bash
+nano /opt/CAPEv2/web/web/settings.py
+```
+
+```python
+import os
+from pathlib import Path
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# URL prefix for static files.
+# Example: "http://media.lawrence.com/static/"
+STATIC_URL = "/static/"
+
+# Additional locations of static files
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+# List of finder classes that know how to find static files in
+# various locations.
+STATICFILES_FINDERS = (
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+)
+
+```
+
+- 手動建立目錄並重新收
+```bash
+# 確保你在虛擬環境中
+source /opt/CAPEv2/venv/bin/activate
+
+# 建立目錄以防萬一
+mkdir -p /opt/CAPEv2/web/static
+
+# 再次執行收集指令
+python3 /opt/CAPEv2/web/manage.py collectstatic --noinput
+```
+
+- 補齊 Missing Dependencies（在venv裡執行）
+```bash
+# 確保你在 venv 狀態下
+source /opt/CAPEv2/venv/bin/activate
+
+# 安裝遺失的組件
+pip install -U git+https://github.com/CAPESandbox/httpreplay
+pip install regex
+pip install -U flare-floss
+```
+
+#### 建立 VM：  
 使用 virt-manager (圖形介面) 或指令建立一個 Windows 10 VM。  
+```bash
+# 檢查 KVM 模組是否已載入
+lsmod | grep kvm
 
-- 優化 Guest：  
-停用防毒： 必須關閉 Windows Defender 與 Windows Update（避免它們干擾惡意程式運行或誤殺 CAPE 監控工具）。  
+# 為了管理方便，我們在 /home/cape 下建立一個專用的存儲池
+sudo mkdir -p /home/cape/vms
+sudo chown -R $USER:$USER /home/cape/vms
+```
 
-- 安裝 Python：  
-在 VM 內安裝 Python 3.x（用於執行 CAPE 的 Agent）。  
+#### 下載 Windows 10 ISO 並存放於 `/temp`:   
+https://www.microsoft.com/zh-tw/software-download/windows10ISO
 
-- 部署 Agent：  
-將 CAPE 資料夾內的 agent.py 放入 VM 內並執行。  
+#### 使用virtual machine manager來創立windows 10 VM
+1. 安裝windows 10 pro 或 enterprise 版本
+2. 安裝flare-vm來建制沙箱環境：
+- Flare-VM 特色：
+    - 安裝大量分析工具（Wireshark, x64dbg, Ghidra 等）。
+    - 預設關閉 Windows Defender、Windows Update 和防火牆（使其易受侵害）。
+    - 更改系統設定，使其看起來不像虛擬機。
 
-- 拍攝快照 (Snapshot)：  
-這是 CAPE 運作的核心。在 Agent 運行的狀態下，使用 virsh 或介面拍攝一個名為 "CAPE" 的快照。CAPE 每次測試完都會將 VM 回滾到這個乾淨的狀態。  
+```powershell
+# 1. 強制設定 TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+
+# 2. 定義下載網址與儲存路徑
+$url = "https://raw.githubusercontent.com/mandiant/flare-vm/master/install.ps1"
+$output = "$HOME\Desktop\install.ps1"
+
+# 3. 使用 WebClient 下載
+(New-Object System.Net.WebClient).DownloadFile($url, $output)
+
+# 4. 檢查檔案是否存在
+ls $output
+```
+
+- 下載後檢查：
+```powershell
+# 解鎖檔案（解除下載保護）
+Unblock-File "$HOME\Desktop\install.ps1"
+
+# 開放執行權限
+Set-ExecutionPolicy Unrestricted -Force
+
+# 正式執行
+cd "$HOME\Desktop"
+.\install.ps1
+```
+
+3. 更改kvm.conf設定
+```bash
+sudo nano /opt/CAPEv2/conf/kvm.conf
+```
+```ini
+[kvm]
+# 這裡列出你有多少台機器，用逗號隔開
+machines = flare_vm_1
+
+[flare_vm_1]
+label = FlareVM_Win10  # virt-manager 裡的名字
+platform = windows
+ip = 192.168.122.10    # 你的 VM IP
+snapshot = Ready_To_Analyze  # 你的快照名稱
+interface = virbr0
+```
+
+#### 把agent送進去:  
+1. 在 Ubuntu 主機開啟一個簡單的 Python Web Server：
+```bash
+cd /opt/CAPEv2/agent/
+python3 -m http.server 8080
+```
+
+2. 在 Windows VM 裡打開瀏覽器 (Edge)，網址輸入：http://192.168.122.1:8080 (通常 KVM 主機的 IP 是 .1)。
+
+3. 下載 agent.py
+4. 安裝 Python 3.10 (32-bit): [Windows installer 32-bit](https://www.python.org/ftp/python/3.10.11/python-3.10.11.exe)
+- 執行安裝程式後，請注意以下勾選項目：
+    - 不要 勾選 "Add Python to PATH"（這樣才不會跟 FLARE-VM 預設的 3.13 衝突）。
+    - 點擊 "Customize installation"。
+    - 一路點 Next 到最後一頁 "Advanced Options"。
+    - 將 "Customize install location" 修改為一個簡單的路徑，例如：C:\Python310-x86
+    - 點擊 Install。
+
+5. 安裝Flask:
+```bash
+C:\Python310-x86\python.exe -m pip install flask requests
+```
+
+6. 新增捷徑run_agent.bat:
+- 在桌面新增text取名為run_agent.bat並edit:
+```
+@echo off
+cd /d "C:\你的agent存放路徑"
+
+:: 直接使用絕對路徑呼叫 32 位元的 Python
+"C:\Python310-x86\python.exe" agent.py
+pause
+```
+- 右鍵點擊run_agent.bat, 進入properties, 在advanced裡面選擇點擊以系統管理員身分執行
+- 將捷徑移至startup資料夾 (在win + R 輸入 shell:startup)
+- 雙擊點擊捷徑，應該會出現一個黑色的cmd視窗，代表agent正在執行
+
+7. 驗證連線
+```bash
+netstat -an | findstr 8000
+```
+
+8. 關閉安全機制：
+- 手動加入 Exclusions
+    1. Open Windows Security (可以在 Start menu 搜尋)。
+    2. Click on Virus & threat protection.
+    3. Under "Virus & threat protection settings", click Manage settings.
+    4. Scroll down to the bottom to the Exclusions section, and click Add or remove exclusions.
+    5. Click the + Add an exclusion button and select Folder.
+    6. Select your C:\ drive (or specifically C:\Python310-x86 and your Agent folder).
+
+- 徹底關閉 Defender
+    1. Press Win + R, type gpedit.msc, and press Enter.
+    2. Go to: Computer Configuration > Administrative Templates > Windows Components > Microsoft Defender Antivirus.
+    3. On the right, find "Turn off Microsoft Defender Antivirus".
+    4. Double-click it, select Enabled, and click OK.
+    5. Restart the VM.
+
+#### 拍攝快照 (Snapshot)：  
+1. 確認CAPE設定：  
+```ini
+[cape_win10]
+# 這裡的名字必須跟 virsh list 看到的一樣
+label = cape_win10 
+
+# 剛才建立的快照名稱 (務必一字不差)
+snapshot = clean_agent_ready
+
+# Windows VM 的 IP 位址 (在 Windows cmd 輸入 ipconfig 看到的那個)
+ip = 192.168.122.x 
+
+# 虛擬機運作的介面，通常是 virbr0
+interface = virbr0
+```
+
+2. 重啟CAPE
+```bash
+sudo systemctl restart cape
+```
+
+3. 查看 cuckoo.py 的啟動 Log
+```bash
+cd /opt/CAPEv2
+python3 cuckoo.py
+```
+
+Q: 
+```bash
+python3 cuckoo.py
+Missed pyzipper dependency: pip3 install pyzipper -U
+Traceback (most recent call last):
+  File "/opt/CAPEv2/lib/cuckoo/core/data/db_common.py", line 13, in <module>
+    from sqlalchemy import (
+ModuleNotFoundError: No module named 'sqlalchemy'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/CAPEv2/cuckoo.py", line 12, in <module>
+    from lib.cuckoo.core.database import Database, init_database
+  File "/opt/CAPEv2/lib/cuckoo/core/database.py", line 26, in <module>
+    from .data.db_common import Base
+  File "/opt/CAPEv2/lib/cuckoo/core/data/db_common.py", line 28, in <module>
+    raise CuckooDependencyError("Unable to import sqlalchemy (install with `poetry install`)")
+lib.cuckoo.common.exceptions.CuckooDependencyError: Unable to import sqlalchemy (install with `poetry install`)
+```
+
+A: 
+```bash
+cd /opt/CAPEv2
+
+# 安裝 poetry (如果還沒裝)
+sudo pip3 install poetry
+
+# 讓 poetry 自動安裝所有 package.json (pyproject.toml) 裡的內容
+sudo poetry install
+
+# 之後啟動 cuckoo 時，前面加上 poetry run
+sudo poetry run python3 cuckoo.py
+
+sudo apt-get update
+sudo apt-get install libvirt-dev python3-dev
+pip install libvirt-python
+pip install certvalidator asn1crypto mscerts
+```
+
+#### 使用 Virt-Manager 拍攝「執行中」快照
+1. 開啟 Virt-Manager：在 Ubuntu 桌面打開虛擬機管理員。
+2. 啟動 cuckoo1：確保 Windows 已經進入桌面，且 Agent 正在跑。
+3. 進入快照分頁：
+    - 雙擊進入 cuckoo1 的控制視窗。
+    - 點擊上方工具列的 「Manage VM snapshots」 圖示（通常是一個像相機或時鐘的圖示）。
+4. 新增快照：
+    - 點擊左下角的 「+」 號。
+    - Name: 輸入 clean_agent_ready (務必跟 kvm.conf 一致)。
+    - Description: 隨便寫，例如 Running with agent。
+    - 點擊 Finish。
+5. 關鍵點：Virt-Manager 會自動處理「記憶體保存」，這就是 CAPE 想要的 "Running" 狀態。
+
+#### 修正ip
+1. 找出 Ubuntu 在虛擬網路的真實 IP
+請在 Ubuntu 終端機輸入：
+```bash
+ip addr show virbr0
+```
+你會看到類似 inet 192.168.122.1/24 的輸出。那個 192.168.122.1 才是正確的地址。
+
+2. 修改 cuckoo.conf
+打開設定檔：
+```bash
+sudo nano /opt/CAPEv2/conf/cuckoo.conf
+```
+
+找到 [resultserver] 區塊，修改 ip：
+```ini
+[resultserver]
+# 將原本的 192.168.1.1 改成你剛才查到的 virbr0 IP (通常是 192.168.122.1)
+ip = 192.168.122.1
+port = 2042
+```
+
+#### 重新執行cuckoo.py
+```bash
+python3 cuckoo.py
+```
 
 ****
-
-#### 第四步：進行能力測試 (Detonation)
-一旦 VM 就緒，您就可以開始測試它的能力：
-- 啟動 Web 介面：  
-預設在 http://localhost:8000。
-- 上傳套件：  
-拿一個您之前提到的 .tgz 檔案。
-- 設定參數：  
-選擇對應的機器（Windows 或 Linux）。
-- 在 Command 欄位輸入：  
+### 第四步： 能力測試
+#### 補齊依賴 (venv)
 ```bash
-npm install ./package.tgz
+poetry install
 ```
-- 觀察報告：
-  - Signatures (特徵碼)： 看它有沒有偵測到 "Persistence" (持久化) 或 "Stealer" (竊密) 特徵。
-  - Network (網路)： 看有沒有連向陌生 IP 的 HTTP 請求。
-  - Dropped Files： 安裝過程中是否在 temp 資料夾產生了可疑的 .exe？
+

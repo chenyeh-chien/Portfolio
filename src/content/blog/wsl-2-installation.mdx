@@ -1,0 +1,82 @@
+---
+title: "WSL 2 Installation"
+date: "2026-03-17"
+description: "WSL 2 Installation"
+tags: ["wsl2", "windows", "linux"]
+cover: "/og/wsl-2-installation.png"
+category: "Black Duck"
+---
+
+****
+### Windows 10/11 VM 上安裝WSL 2
+
+> 請先確認有開啟VM 虛擬化功能，
+> 以下請都用系統管理員執行powershell
+
+#### 1. 啟用虛擬機器平台功能
+```powershell
+# 啟用 WSL 服務
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+
+# 啟用虛擬機器平台 (WSL 2 必要)
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+
+# 啟用 Hyper-V (如果你的 Windows 版本支援)
+dism.exe /online /enable-feature /featurename:Microsoft-Hyper-V /all /norestart
+```
+
+#### 2. 開啟Windows Hyper V 設定並重新啟動VM
+```powershell
+# 啟用虛擬機器平台功能
+Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+
+# 啟用Windows Hyper V 設定
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Management-Clients -All
+```
+
+#### 3. 安裝WSL 2
+```powershell
+Add-AppxPackage -Path C:\Users\user\Downloads\Microsoft.WSL_2.6.3.0_x64_ARM64.msixbundle
+```
+
+#### 4. 雙擊執行wsl_update_x64.msi
+#### 5. 確認環境
+```powershell
+# 確認版本為2
+wsl --list --verbose
+
+# 確定設定都是enabled
+Get-WindowsOptionalFeature -Online | Where-Object {$_.FeatureName -match "Microsoft-Windows-Subsystem-Linux|VirtualMachinePlatform|Microsoft-Hyper-V"} | Select-Object FeatureName, State
+```
+
+#### 6. import ubuntu24.04
+```powershell
+wsl --import ubuntu24.04 C:\WSL_Ubuntu C:\WSL_Ubuntu\ubuntu-24.04.4-wsi-amd64.wsl --version 2
+```
+
+#### 7. 進入Ubuntu
+```powershell
+wsl -d ubuntu24.04
+```
+
+#### 8. 安裝dependencies： docker 等等.deb檔
+```bash
+sudo dpkg -i *.deb
+
+# 確認systemd
+ps -p 1 -o comm=
+
+# 1. 啟動 Docker 服務
+sudo systemctl start docker
+
+# 2. 設定開機自動啟動 (選配)
+sudo systemctl enable docker
+
+# 3. 檢查狀態
+sudo systemctl status docker
+```
+
+
+

@@ -1,0 +1,71 @@
+---
+title: "CAPEv2: Windows 10 虛擬機沙箱建立指南"
+date: "2026-03-17"
+description: "Cape v2 Win10 VM Build Up Instruction"
+tags: ["cape-v2", "win10", "vm", "build-up-instruction", "security"]
+cover: "/og/cape-v2-build-up-instruction.png"
+category: "DAST"
+---
+
+****
+
+要在 CAPEv2 中建立 Windows 10 沙箱，您需要使用 `virt-manager` (KVM) 來建立並設定虛擬機。因為建立過程需要圖形介面操作（例如安裝 Windows 和更改系統設定），請按照以下步驟手動進行。
+
+## 階段 1：建立虛擬機
+1. **準備 Windows 10 ISO 檔案**：確保您有一個乾淨的 Windows 10 安裝映像檔。
+2. **開啟 Virtual Machine Manager (`virt-manager`)**：
+   - 點擊「建立新的虛擬機」。
+   - 選擇您的 Windows 10 ISO。
+   - 配置 CPU 和記憶體（建議至少 2 核心與 4096 MB RAM）。
+   - **網路設定**：預設情況下，KVM 使用 `default` (NAT) 網路。這會連線到 `virbr0`（通常網段為 `192.168.122.x`）。保留此預設設定。
+   - **虛擬機名稱**：我們建議命名為 `cuckoo1`（這符合您系統中 `kvm.conf` 的預設設定）。
+
+## 階段 2：Windows 內部安全與系統設定
+啟動並安裝完 Windows 10 後，請**務必**關閉以下安全功能，以免干擾惡意軟體分析：
+1. **關閉 Windows Defender / 病毒與威脅防護**：
+   - 可以透過「群組原則 (gpedit.msc)」或登錄檔完全停用（非常重要）。
+2. **關閉 Windows 防火牆**：
+   - 到控制台 -> Windows Defender 防火牆 -> 開啟或關閉 Windows Defender 防火牆，全部設為關閉。
+3. **關閉 UAC (使用者帳戶控制)**：
+   - 搜尋「變更使用者帳戶控制設定」，將拉桿降到最低（不要通知）。
+4. **關閉 Windows Update**：
+   - 停止 Windows Update 服務，避免在分析期間系統突然重啟或下載檔案。
+
+## 階段 3：設定固定 IP
+為了讓 CAPE 能穩定連線到這台沙箱，虛擬機必須有固定的 IP：
+1. 到網路連線設定，右鍵點擊乙太網路卡 -> 內容 -> IPv4。
+2. **選擇「使用下列的 IP 位址」**：
+   - **IP 位址**: `192.168.122.105` (這是您 `kvm.conf` 裡目前的預設 IP)
+   - **子網路遮罩**: `255.255.255.0`
+   - **預設閘道**: `192.168.122.1`
+   - **DNS 伺服器**: `8.8.8.8`
+
+## 階段 4：安裝 Python 與相依套件
+CAPE 代理程式是用 Python 寫的，因此虛擬機內必須有 Python 環境：
+1. 下載並安裝 **Python 3** (建議 3.10 或更新版本，可至 python.org 下載)。
+   - ⚠️ **重要**：安裝時務必勾選「**Add Python to PATH**」。
+2. 開啟命令提示字元 (cmd) 執行以下指令安裝截圖所需套件：
+   ```cmd
+   pip install Pillow
+   ```
+
+## 階段 5：執行 CAPE Agent
+1. 在 Linux 主機上，Agent 腳本位於 [/opt/CAPEv2/agent/agent.py](file:///opt/CAPEv2/agent/agent.py)。
+2. 將此 `agent.py` 檔案複製到 Windows 10 虛擬機內（例如放在 `C:\agent.py` 或是桌面）。
+    - 您可以透過建立暫時的 HTTP Server (`python3 -m http.server`) 將檔案傳進虛擬機。
+3. **以系統管理員身分**開啟命令提示字元，執行：
+   ```cmd
+   python C:\agent.py
+   ```
+   *此程式將沒有畫面，並且會在背景監聽 Port 8000。請讓這個 cmd 視窗保持開啟或背景執行。*
+
+## 階段 6：建立系統快照 (Snapshot)
+1. 確認虛擬機**正在運行**，且 `agent.py` 已經在執行中。
+2. 回到 Linux 主機的 `virt-manager`：
+   - 點選該虛擬機的「管理 VM 快照」功能 (Manage VM Snapshots)。
+   - 建立一個新的快照，並命名為 `snapshot1`。
+   - **注意**：快照必須在虛擬機處於「啟動中」且 Agent「等待連線」的狀態下建立。這確保每次分析都能從這個「準備就緒」的狀態開始。
+
+---
+
+如果您的虛擬機名稱 (Label)、IP 或快照名稱與上述設定不同，請告訴我，我可以幫您修改 [/opt/CAPEv2/conf/kvm.conf](file:///opt/CAPEv2/conf/kvm.conf) 和相關設定來符合您的實際配置。當您準備好時，我們就能進行測試！

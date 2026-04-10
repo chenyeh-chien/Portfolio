@@ -8,82 +8,54 @@ category: "Black Duck"
 ---
 
 ****
-#### 3/18 更新:  
+### 更新
+#### 3/18:  
 改由兩台VM (OA / 測網VM) 分頭執行，並利用共用資料夾分享資料
 
 ****
-### 目標流程:
+### 目標流程
+![blackduck-auto-remove-flow-chart](/assets/images/blackduck-auto-remove-flow-chart.png)
 - OA VM: 
+    #### CRON JOB1: 
     - 讀取共享資料夾檔案: blackduck_users.json
     - 呼叫LDAP API, 取得在職狀態
-    - 寫入共享資料夾檔案: blackduck_users_status.json
+    - 寫入共享資料夾檔案: retired_users.json
 - 測網VM: 
+    #### CRON JOB1: 
     - 呼叫Black Duck API, 取得使用者清單
     - 寫入共享資料夾檔案: blackduck_users.json
-    - 讀取共享資料夾檔案: blackduck_users_status.json
+
+    #### CRON JOB2: 
+    - 讀取共享資料夾檔案: retired_users.json
     - 呼叫Black Duck API, 取得使用者的群組清單
     - 呼叫Black Duck API, 將使用者從群組移除
     - 呼叫Black Duck API, 更新使用者為Inactive
 
-### 執行步驟:
-#### OA VM:
-- 建立資料夾
+****
+
+### 作業前準備
+#### 1. 環境建置
+- 由於是MIS只能使用離線環境, 所以需要先在Windows環境用WSL 2建置好linux環境跑docker:
+[WSL 2 Installation](/blog/wsl-2-installation)
+
+#### 2. 建立共享資料夾與WSL 2之間的路徑
+- 第一步：在 Windows 重新對映一個代號
+    - 打開 檔案總管。
+    - 在本機（This PC）點擊右鍵 -> 連線網路磁碟機 (Map network drive)。
+    - 磁碟機 (Drive): 下拉選一個空的，例如 X:。
+    - 資料夾 (Folder): 輸入公司的路徑 \\server\share。
+    - 勾選「登入時重新連線」，點擊完成並輸入帳密。
+
+- 第二步：在 WSL 2 (Ubuntu) 裡面掛載這個新代號
+    - 現在我們要把 Windows 的 X: 槽映射進 Linux：
+
 ```bash
-cd /home/user
-mkdir ./black-duck/remove-retired-users
-cd ./black-duck/remove-retired-users
+# 1. 建立掛載點 (目錄名稱可以隨你自己取)
+sudo mkdir -p /mnt/company_share
+
+# 2. 使用 drvfs 掛載 X 槽 (不需要安裝 cifs-utils)
+sudo mount -t drvfs X: /mnt/company_share
 ```
-
-- 建立相關檔案並更新內容
-```bash
-touch .env
-touch blackduck-verify-users.js
-touch blackduck-verify-users.Dockerfile
-touch package.json
-```
-
-- 建立 Docker Image
-```bash
-docker build -t blackduck-verify-users .
-```
-
-- 建立 Cron Job
-```bash
-0 0 * * * docker run --rm -v /home/user/logs:/app/logs blackduck-verify-users
-```
-
-#### 測網VM:
-- 建立資料夾
-```bash
-cd /home/user
-mkdir ./black-duck/blackduck-verify-users
-cd ./black-duck/blackduck-verify-users
-```
-
-- 建立相關檔案並更新內容
-```bash
-touch .env
-touch blackduck-verify-users.js
-touch blackduck-verify-users.Dockerfile
-touch package.json
-```
-
-- 建立 Docker Image
-```bash
-docker build -t blackduck-verify-users .
-```
-
-- 建立 Cron Job
-```bash
-0 0 * * * docker run --rm -v /home/user/logs:/app/logs blackduck-verify-users
-```
-
-
-### 任務經驗累積:
-1. 跟MIS不同部門同事合作並取得公司LDAP API
-2. 利用VM cron job來定期執行任務
-3. 使用docker container避免環境無汙染
-4. 使用.env檔避免機密資訊外洩
 
 ****
 ### ⭐ LDAP API
@@ -235,141 +207,22 @@ Body:
 ```
 
 ****
-### ⭐ blackduck-verify-users.js (OA VM):
-```javascript
 
-```
-
-### ⭐ blackduck-verify-users.js (Test VM):
-```javascript
-import dotenv from "dotenv";
-dotenv.config();
-
-const API_TOKEN = process.env.BLACK_DUCK_API_TOKEN;
-const BLACK_DUCK_URL = process.env.BLACK_DUCK_URL;
-
-async function getBlackDuckBearerToken() {
-  const response = await fetch(`${BLACK_DUCK_URL}/api/tokens/authenticate`, {
-    method: "POST",
-    headers: {
-      "Authorization": `token ${API_TOKEN}`,
-      "Accept": "application/vnd.blackducksoftware.user-4+json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get bearer token: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.token;
-}
-
-async function getAllUsers(bearerToken) {
-  const response = await fetch(`${BLACK_DUCK_URL}/api/users`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${bearerToken}`,
-      "Accept": "application/vnd.blackducksoftware.user-4+json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get all users: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.items;
-}
-
-async function getUserGroupsByUserId(userId) {
-  const response = await fetch(`${BLACK_DUCK_URL}/api/users/${userId}/usergroups`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${bearerToken}`,
-      "Accept": "application/vnd.blackducksoftware.user-4+json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get user groups: ${response.statusText}`);
-  }
-
-  return await response.json();
-}
-
-async function removeUserFromGroup(userGroup, userId) {
-  const response = await fetch(`${BLACK_DUCK_URL}/api/usergroups/${userGroup.id}/users/${userId}`, {
-    method: "DELETE",
-    headers: {
-      "Authorization": `Bearer ${bearerToken}`,
-      "Accept": "application/vnd.blackducksoftware.user-4+json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to remove user from group: ${response.statusText}`);
-  }
-}
-
-async function updateUser(userId, data) {
-  const response = await fetch(`${BLACK_DUCK_URL}/api/users/${userId}`, {
-    method: "PUT",
-    headers: {
-      "Authorization": `Bearer ${bearerToken}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(data)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to update user: ${response.statusText}`);
-  }
-}
-
-async function deactivateUsers() {
-  // get bearer tokens
-  const blackDuckBearerToken = await getBlackDuckBearerToken();
-  const srmBearerToken = await getSRMBearerToken();
-
-  const allUsers = await getAllUsers(blackDuckBearerToken);
-  const userNames = allUsers.map((user) => user.userName);
-  const ldapUserInfoList = await getLDAPUserInfoByNameList(
-    srmBearerToken,
-    userNames
-  );
-
-  for (let user of ldapUserInfoList) {
-    if (user.AccountStatus === "Y") {
-      continue;
-    } 
-
-    // get user groups
-    const userGroups = getUserGroupsByUserId(user.userId);
-
-    // remove user from groups
-    for (let group of userGroups) {
-      await removeUserFromGroup(group, user.userId);
-    }
-    
-    // deactivate the user
-    await updateUser(user.userId,{
-      ...user,
-      active: false
-    });
-  }
-}
-
-deactivateUsers();
-```
-
-### ⭐ deactivate_users.js
+### ⭐ ldap-check-users.js (OA VM):
 ```javascript
 // get BLACK DUCK access token
 import dotenv from "dotenv";
+import fs from "fs-extra";
+import path from "path";
+import { fileURLToPath } from "url";
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const SRM_URL = process.env.SRM_URL;
+const BLACKDUCK_USERS_FILE = path.join(__dirname, "../static/blackduck-users.json");
+const RETIRED_USERS_FILE = path.join(__dirname, "../static/retired-users.json");
 
 async function getSRMBearerToken() {
   const response = await fetch(`${SRM_URL}/api/Token/Token/FetchLongToken`, {
@@ -398,13 +251,14 @@ async function getLDAPUserInfoByNameList(bearerToken, list) {
   const response = await fetch(`${SRM_URL}/api/Internal/UserStatus/UserList`, {
     method: "POST",
     headers: {
+      "Authorization": `Bearer ${bearerToken}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
       "Input": input
     })
   });
-
+  
   if (!response.ok) {
     throw new Error(`Failed to get LDAP user info: ${response.statusText}`);
   }
@@ -413,33 +267,238 @@ async function getLDAPUserInfoByNameList(bearerToken, list) {
   return data.Result;
 }
 
+async function readBlackDuckUsersFromJSON() {
+  const blackDuckUsers = await fs.readJson(BLACKDUCK_USERS_FILE);
+  if (blackDuckUsers.length === 0) {
+    throw new Error("Black Duck users list is empty");
+  }
+
+  return blackDuckUsers;
+}
+
+async function readAndWriteFile() {
+  const blackDuckUsersInfo = await readBlackDuckUsersFromJSON();
+  const blackDuckUsersMap = blackDuckUsersInfo.reduce((acc, curr) => {
+    return {
+      ...acc,
+      [curr.userName]: curr
+    }
+  }, {})
+  
+  const blackDuckUsers = blackDuckUsersInfo.map(user => user.userName);
+  const bearerToken = await getSRMBearerToken();
+  const ldapUsers = await getLDAPUserInfoByNameList(bearerToken, blackDuckUsers);
+  const retiredUsers = ldapUsers
+    .filter(user => user.AccountStatus === "X")
+    .map(user => blackDuckUsersMap[user.Input]);
+    
+  await fs.writeJson(RETIRED_USERS_FILE, retiredUsers, { spaces: 4 });
+}
+
+readAndWriteFile();
+```
+
+### ⭐ blackduck-get-users.js (Test VM):
+```javascript
+import dotenv from "dotenv";
+import fs from "fs-extra";
+import path from "path";
+import { fileURLToPath } from "url";
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const API_TOKEN = process.env.BLACK_DUCK_API_TOKEN;
+const BLACK_DUCK_URL = process.env.BLACK_DUCK_URL;
+const BLACKDUCK_USERS_FILE = path.join(__dirname, "../static/blackduck-users.json");
+
+async function getBlackDuckBearerToken() {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/tokens/authenticate`, {
+    method: "POST",
+    headers: {
+      "Authorization": `token ${API_TOKEN}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get bearer token: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.bearerToken;
+}
+
+async function getAllUsers(bearerToken) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/users?limit=1000`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get all users: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.items;
+}
+
+async function writeBlackDuckUsers() {
+  const blackDuckBearerToken = await getBlackDuckBearerToken();
+  const allUsers = await getAllUsers(blackDuckBearerToken);
+  const filteredUsers = 
+	allUsers.filter(user => 
+		user.active && 
+		(
+			user.userName !== 'sysadmin' && 
+			user.userName !== 'pega_sentinel'
+		)
+	);
+  await fs.writeJson(BLACKDUCK_USERS_FILE, filteredUsers, { spaces: 4 });
+}
+
+writeBlackDuckUsers();
+```
+
+### ⭐ blackduck-remove-users.js (Test VM):
+```javascript
+import dotenv from "dotenv";
+import fs from "fs-extra";
+import path from "path";
+import { fileURLToPath } from "url";
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const API_TOKEN = process.env.BLACK_DUCK_API_TOKEN;
+const BLACK_DUCK_URL = process.env.BLACK_DUCK_URL;
+const RETIRED_USERS_FILE = path.join(__dirname, "../static/retired-users.json");
+
+async function getBlackDuckBearerToken() {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/tokens/authenticate`, {
+    method: "POST",
+    headers: {
+      "Authorization": `token ${API_TOKEN}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get bearer token: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  return data.bearerToken;
+}
+
+async function getUserGroupsByUserId(bearerToken, userId) {
+  const response = await fetch(`${BLACK_DUCK_URL}/api/users/${userId}/usergroups`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${bearerToken}`,
+      "Accept": "application/vnd.blackducksoftware.user-4+json"
+    }
+  });
+
+  if (!response.ok) {
+	console.log(response)
+    throw new Error(`Failed to get user groups: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+async function removeUserFromGroup(
+    bearerToken, 
+    userGroupId, 
+    userId
+) {
+  const response = 
+    await fetch(`${BLACK_DUCK_URL}/api/usergroups/${userGroupId}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${bearerToken}`,
+            "Accept": "application/vnd.blackducksoftware.user-4+json"
+        }
+    });
+
+  if (!response.ok) {
+	console.log(response)
+    throw new Error(`Failed to remove user from group: ${response.statusText}`);
+  }
+}
+
+async function updateUser(
+    bearerToken, 
+    userId, 
+    data
+) {
+  const response = 
+    await fetch(`${BLACK_DUCK_URL}/api/users/${userId}`, {
+        method: "PUT",
+        headers: {
+            "Authorization": `Bearer ${bearerToken}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update user: ${response.statusText}`);
+  }
+}
+
+async function readRetiredUsersFromJSON() {
+  const retiredUsers = await fs.readJson(RETIRED_USERS_FILE);
+  if (retiredUsers.length === 0) {
+    throw new Error("Retired users list is empty");
+  }
+
+  return retiredUsers;
+}
+
+function getIdByHref(href) {
+  if (
+	typeof href !== 'string' ||
+	href.length === 0
+  ) {
+	throw new Error('Failed to get user id by href');  
+  }
+  
+  const list = href.split("/");
+  return list[list.length - 1];
+}
+
 async function deactivateUsers() {
   // get bearer tokens
+  const retiredUsers = await readRetiredUsersFromJSON();
   const blackDuckBearerToken = await getBlackDuckBearerToken();
-  const srmBearerToken = await getSRMBearerToken();
-
-  const allUsers = await getAllUsers(blackDuckBearerToken);
-  const userNames = allUsers.map((user) => user.userName);
-  const ldapUserInfoList = await getLDAPUserInfoByNameList(
-    srmBearerToken,
-    userNames
-  );
-
-  for (let user of ldapUserInfoList) {
-    if (user.AccountStatus === "Y") {
-      continue;
-    } 
-
+  
+  for (let user of retiredUsers) {
+	if (!user._meta || !user._meta.href) continue;
+	
+	const href = user._meta.href;
+	const userId = getIdByHref(href);
     // get user groups
-    const userGroups = getUserGroupsByUserId(user.userId);
-
+    const userGroups = 
+        await getUserGroupsByUserId(blackDuckBearerToken, userId);
+	
+	const items = userGroups.items;
     // remove user from groups
-    for (let group of userGroups) {
-      await removeUserFromGroup(group, user.userId);
+    for (let group of items) {
+	  if (!group.userGroup) continue;
+
+	  const usergroupId = getIdByHref(group.userGroup);
+      await removeUserFromGroup(blackDuckBearerToken, usergroupId, userId);
     }
     
     // deactivate the user
-    await updateUser(user.userId,{
+    await updateUser(blackDuckBearerToken, userId,{
       ...user,
       active: false
     });
@@ -448,29 +507,69 @@ async function deactivateUsers() {
 
 deactivateUsers();
 ```
-****
-
-### ⭐ deactivate_bd_users.Dockerfile
+### ⭐ ldap-check-users.Dockerfile
 ```dockerfile
-FROM node:latest
+FROM node:24.14.1-alpine
 
 RUN mkdir -p /usr/src/app
-COPY ./black-duck/ /usr/src/app/
-
-ENV BLACK_DUCK_API_TOKEN=<BLACK_DUCK_API_TOKEN>
-ENV BLACK_DUCK_URL=<BLACK_DUCK_URL>
+COPY . /usr/src/app/
 
 WORKDIR /usr/src/app
-RUN npm i
 
-CMD ["node", "deactivate_users.js"]
+CMD ["npm", "run", "start"]
+```
+
+
+### ⭐ blackduck-get-users.Dockerfile
+```dockerfile
+FROM node:24.14.1-alpine
+
+RUN mkdir -p /usr/src/app
+COPY . /usr/src/app/
+
+WORKDIR /usr/src/app
+
+CMD ["npm", "run", "get-users"]
+```
+### ⭐ blackduck-remove-users.Dockerfile
+```dockerfile
+FROM node:24.14.1-alpine
+
+RUN mkdir -p /usr/src/app
+COPY . /usr/src/app/
+
+WORKDIR /usr/src/app
+
+CMD ["npm", "run", "remove-users"]
 ```
 
 ****
-### ⭐ VM Cron Job
-每天凌晨 12 點整，自動啟動 Node.js 執行 deactivate_users.js 腳本，並將所有的執行過程與錯誤紀錄，全部紀錄到 /home/user/logs/sync.log 檔案中。
+### docker 相關設定
+#### docker load base image:
 ```bash
-0 0 * * * docker run --rm -v /home/user/logs:/app/logs deactivate_bd_users
+sudo docker load -i /mnt/d/node_offline.tar
 ```
 
+****
+### 執行步驟:
+#### 1. docker build image:
+```bash
+sudo docker build -f blackduck-get-users.Dockerfile -t blackduck-get-users .
+```
+
+#### 2. docker run check results:
+```bash
+sudo docker run -it \
+  -v "/mnt/srm_share/ChenYeh_Chien/BlackDuck/static:/usr/src/app/static \
+  -v /usr/src/app/node_modules \
+  blackduck-get-users
+```
+
+#### 3. VM Cron Job trigger docker run:
+- 在crontab -e 中加入:
+```bash
+# 在檔案底部加入: 每天凌晨12點執行
+0 0 * * * /usr/bin/docker run --rm -v  "/mnt/srm_share/ChenYeh_Chien/BlackDuck/static:/usr/src/app/static" -v /usr/src/app/node_modules blackduck-get-users >> /mnt/srm_share/ChenYeh_Chien/BlackDuck/static/blackduck-get-users.log 2>&1 
+```
+****
 
